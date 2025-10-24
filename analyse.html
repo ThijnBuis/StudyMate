@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Analyse – StudyMate</title>
+  <style>
+    :root{--brand:#2193b0;--accent:#6dd5ed;--border:#e4ecf5;--muted:#6b7b8c;--ink:#0f2942;--bg:#f7fbff}
+    *{box-sizing:border-box}
+    body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:#fff}
+    .bar{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);padding:10px 12px;display:flex;gap:10px;align-items:center;z-index:10}
+    .btn{padding:8px 12px;border:1px solid #cfe0ee;border-radius:10px;background:#fff;cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;border:none;box-shadow:0 6px 18px rgba(33,147,176,.25)}
+    .muted{color:var(--muted)}
+    .page{width:min(1100px,94vw);margin:18px auto}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .card{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+    h1,h2,h3{margin:0 0 10px}
+    table{width:100%;border-collapse:collapse} th,td{border:1px solid var(--border);padding:8px;text-align:left}
+    select, input[type=number], input[type=date]{padding:6px 8px;border:1px solid var(--border);border-radius:8px}
+    canvas{width:100%;height:260px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="btn" href="./Portaal.html">← Terug naar Portaal</a>
+    <div class="muted">Vak:</div>
+    <select id="folderSelect"></select>
+    <div class="muted">Geselecteerd vak: <strong id="folder">–</strong></div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button id="logStudy" class="btn">+ Log studietijd</button>
+      <button id="addGrade" class="btn">+ Voeg cijfer toe</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="kpis">
+      <div class="kpi">
+        <div class="muted">Materialen</div>
+        <div id="kpiMaterials" style="font-weight:800;font-size:1.5rem">0</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Laatst bijgewerkt</div>
+        <div id="kpiUpdated" style="font-weight:800;font-size:1.5rem">–</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Studietijd (deze week)</div>
+        <div id="kpiMinutes" style="font-weight:800;font-size:1.5rem">0 min</div>
+      </div>
+      <div class="kpi">
+        <div class="muted">Gemiddeld cijfer</div>
+        <div id="kpiAvg" style="font-weight:800;font-size:1.5rem">–</div>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Studietijd per dag (deze week)</h3>
+        <canvas id="studyChart" width="500" height="220"></canvas>
+      </div>
+      <div class="card">
+        <h3>Cijfers in de tijd</h3>
+        <canvas id="gradeChart" width="500" height="220"></canvas>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Recente materialen</h3>
+        <table>
+          <thead><tr><th>Titel</th><th>Type</th></tr></thead>
+          <tbody id="materialsBody"><tr><td class="muted" colspan="2">Geen items</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Snelle invoer</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+          <div>
+            <label>Datum</label><br>
+            <input id="dateInput" type="date">
+          </div>
+          <div>
+            <label>Minuten studeren</label><br>
+            <input id="minutesInput" type="number" min="0" step="5" placeholder="bijv. 45">
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="saveStudy" class="btn btn-primary">Opslaan</button>
+          <button id="clearWeek" class="btn">Weekdata wissen</button>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+          <div>
+            <label>Datum cijfer</label><br>
+            <input id="gradeDateInput" type="date">
+          </div>
+          <div>
+            <label>Cijfer (1-10)</label><br>
+            <input id="gradeInput" type="number" min="1" max="10" step="0.1" placeholder="bijv. 7.5">
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="saveGrade" class="btn btn-primary">Cijfer opslaan</button>
+          <button id="clearGrades" class="btn">Alle cijfers wissen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const KEY_DRIVE='studymate.drive';
+  const KEY_ANALYTICS='studymate.analytics';
+  const load=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+
+  function getFolders(){
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    return Object.keys(d.folders||{});
+  }
+  function getSelectedFolder(){
+    const p=new URLSearchParams(location.search);
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    return p.get('folder') || d.selected || null;
+  }
+  function setSelectedFolder(name){
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    d.selected=name; save(KEY_DRIVE,d);
+    const u=new URL(location.href);
+    u.searchParams.set('folder', name); history.replaceState(null,'',u);
+  }
+
+  // ----- Simple chart utilities (no libs) -----
+  function drawBarChart(ctx, labels, values, maxY){
+    const W=ctx.canvas.width, H=ctx.canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#e4ecf5'; ctx.lineWidth=1;
+    // grid
+    const pad=30, bottom=20, left=30, right=10, top=10;
+    const chartW=W-left-right, chartH=H-top-bottom;
+    for(let i=0;i<=4;i++){
+      const y=top+chartH*(i/4);
+      ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(left+chartW,y); ctx.stroke();
+    }
+    // bars
+    const n=values.length; const bw=chartW/n*0.6; const gap=chartW/n*0.4;
+    ctx.fillStyle='#2193b0';
+    for(let i=0;i<n;i++){
+      const v=values[i]; const h=maxY? (v/maxY)*chartH : 0;
+      const x=left + i*(bw+gap) + gap/2;
+      const y=top + chartH - h;
+      ctx.fillRect(x,y,bw,h);
+    }
+    // labels
+    ctx.fillStyle='#6b7b8c'; ctx.font='12px system-ui';
+    for(let i=0;i<n;i++){
+      const x=left + i*(bw+gap) + gap/2 + bw/2;
+      ctx.textAlign='center';
+      ctx.fillText(labels[i], x, H-5);
+    }
+  }
+
+  function drawLineChart(ctx, points){
+    const W=ctx.canvas.width, H=ctx.canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#e4ecf5'; ctx.lineWidth=1;
+    const left=30,right=10,top=10,bottom=20; const chartW=W-left-right, chartH=H-top-bottom;
+    // axis
+    ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(left,top+chartH); ctx.lineTo(left+chartW,top+chartH); ctx.stroke();
+    if(points.length<1) return;
+    const xs=points.map(p=>p.x), ys=points.map(p=>p.y);
+    const minX=Math.min(...xs), maxX=Math.max(...xs);
+    const minY=Math.min(0, Math.min(...ys)), maxY=Math.max(10, Math.max(...ys));
+    ctx.strokeStyle='#2193b0'; ctx.lineWidth=2; ctx.beginPath();
+    points.forEach((p,i)=>{
+      const x=left + ( (p.x - minX) / (maxX - minX || 1) ) * chartW;
+      const y=top + chartH - ( (p.y - minY) / (maxY - minY || 1) ) * chartH;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      ctx.fillStyle='#2193b0'; ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  // ----- Data helpers -----
+  function weekStart(d=new Date()){ const n=new Date(d); const day=(n.getDay()+6)%7; n.setDate(n.getDate()-day); n.setHours(0,0,0,0); return n; }
+  function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+  function folderAnalytics(name){
+    const a=load(KEY_ANALYTICS)||{};
+    if(!a[name]) a[name]={studyLogs:[], grades:[]}; // {date:'YYYY-MM-DD', minutes:<int>} , {date:'YYYY-MM-DD', grade:<float>}
+    return a;
+  }
+  function saveAnalytics(a){ save(KEY_ANALYTICS,a); }
+
+  // ----- Render -----
+  function renderAll(){
+    const sel=getSelectedFolder();
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    const folders=Object.keys(d.folders||{});
+    const select=document.getElementById('folderSelect');
+    select.innerHTML = folders.map(f=>'<option'+(f===sel?' selected':'')+'>'+f+'</option>').join('');
+    document.getElementById('folder').textContent= sel || '–';
+
+    // KPIs from drive
+    let mats=0, upd='–';
+    if(sel && d.folders[sel]){
+      const m=d.folders[sel].materials||{};
+      mats = Array.isArray(m) ? m.length : ['module','assignment','lectures','deadlines','schedule'].reduce((c,k)=>c+(m[k]?.length||0),0);
+      const u=d.folders[sel].lastUpdate||d.folders[sel].createdAt||null;
+      upd = u ? new Date(u).toLocaleDateString('nl-NL') : '–';
+    }
+    document.getElementById('kpiMaterials').textContent = mats;
+    document.getElementById('kpiUpdated').textContent = upd;
+
+    // Materials list (recent 10)
+    const body=document.getElementById('materialsBody');
+    body.innerHTML='';
+    const listItems = [];
+    if(sel && d.folders[sel]){
+      const m=d.folders[sel].materials||[];
+      const arr = Array.isArray(m) ? m.slice() : Object.values(m).flat();
+      arr.slice(-10).reverse().forEach(it=> listItems.push(it));
+    }
+    if(listItems.length===0){
+      body.innerHTML='<tr><td class="muted" colspan="2">Geen items</td></tr>';
+    }else{
+      listItems.forEach(it=>{
+        const tr=document.createElement('tr');
+        const t=it.title||'(naamloos)'; const ty=it.type||'–';
+        tr.innerHTML='<td>'+t+'</td><td class="muted">'+ty+'</td>';
+        body.appendChild(tr);
+      });
+    }
+
+    // Analytics (study & grades) from KEY_ANALYTICS
+    const analytics=folderAnalytics(sel); const fa=analytics[sel];
+    // study minutes per day for current week
+    const ws=weekStart(new Date());
+    const labels=['Ma','Di','Wo','Do','Vr','Za','Zo'];
+    const values=[0,0,0,0,0,0,0];
+    fa.studyLogs.forEach(log=>{
+      const d=new Date(log.date);
+      if(d>=ws){ const idx=(d.getDay()+6)%7; values[idx]+=Number(log.minutes||0); }
+    });
+    const weekMinutes=values.reduce((a,b)=>a+b,0);
+    document.getElementById('kpiMinutes').textContent = weekMinutes+' min';
+    const maxY = Math.max(60, Math.max(...values, 0));
+    drawBarChart(document.getElementById('studyChart').getContext('2d'), labels, values, maxY);
+
+    // grades line
+    const pts = fa.grades.map(g=>({x:new Date(g.date).getTime(), y:Number(g.grade)})).sort((a,b)=>a.x-b.x);
+    const avg = pts.length ? (pts.reduce((s,p)=>s+p.y,0)/pts.length).toFixed(1) : '–';
+    document.getElementById('kpiAvg').textContent = avg;
+    drawLineChart(document.getElementById('gradeChart').getContext('2d'), pts);
+  }
+
+  // ----- Events -----
+  document.getElementById('folderSelect').addEventListener('change', (e)=>{
+    const name=e.target.value; setSelectedFolder(name); renderAll();
+  });
+
+  // quick actions in top bar
+  document.getElementById('logStudy').addEventListener('click', ()=>{
+    const sel=getSelectedFolder(); if(!sel) return alert('Geen vak geselecteerd.');
+    const mins=prompt('Hoeveel minuten wil je loggen?', '30'); if(mins===null) return;
+    const a=folderAnalytics(sel); a[sel].studyLogs.push({date:new Date().toISOString().slice(0,10), minutes: Number(mins)||0}); saveAnalytics(a); renderAll();
+  });
+  document.getElementById('addGrade').addEventListener('click', ()=>{
+    const sel=getSelectedFolder(); if(!sel) return alert('Geen vak geselecteerd.');
+    const g=prompt('Welk cijfer wil je toevoegen? (1–10)', '7.0'); if(g===null) return;
+    const a=folderAnalytics(sel); a[sel].grades.push({date:new Date().toISOString().slice(0,10), grade: Number(g)||0}); saveAnalytics(a); renderAll();
+  });
+
+  // form in "Snelle invoer"
+  document.getElementById('saveStudy').addEventListener('click', ()=>{
+    const sel=getSelectedFolder(); if(!sel) return alert('Geen vak geselecteerd.');
+    const date=document.getElementById('dateInput').value || new Date().toISOString().slice(0,10);
+    const minutes=Number(document.getElementById('minutesInput').value||0);
+    const a=folderAnalytics(sel); a[sel].studyLogs.push({date, minutes}); saveAnalytics(a); renderAll();
+  });
+  document.getElementById('clearWeek').addEventListener('click', ()=>{
+    const sel=getSelectedFolder(); if(!sel) return alert('Geen vak geselecteerd.');
+    if(!confirm('Weekdata wissen voor '+sel+'?')) return;
+    const ws=weekStart(new Date());
+    const a=folderAnalytics(sel); a[sel].studyLogs = a[sel].studyLogs.filter(l=> new Date(l.date) < ws ); saveAnalytics(a); renderAll();
+  });
+  document.getElementById('saveGrade').addEventListener('click', ()=>{
+    const sel=getSelectedFolder(); if(!sel) return alert('Geen vak geselecteerd.');
+    const date=document.getElementById('gradeDateInput').value || new Date().toISOString().slice(0,10);
+    const grade=Number(document.getElementById('gradeInput').value||0);
+    const a=folderAnalytics(sel); a[sel].grades.push({date, grade}); saveAnalytics(a); renderAll();
+  });
+  document.getElementById('clearGrades').addEventListener('click', ()=>{
+    const sel=getSelectedFolder(); if(!sel) return alert('Geen vak geselecteerd.');
+    if(!confirm('Alle cijfers wissen voor '+sel+'?')) return;
+    const a=folderAnalytics(sel); a[sel].grades = []; saveAnalytics(a); renderAll();
+  });
+
+  // ----- Init -----
+  (function init(){
+    // ensure a selected folder by URL or drive.selected
+    const sel=getSelectedFolder();
+    const folders=getFolders();
+    const first = sel || folders[0] || null;
+    if(!sel && first){
+      setSelectedFolder(first);
+    }
+    // default date inputs to today
+    const today=new Date().toISOString().slice(0,10);
+    document.getElementById('dateInput').value=today;
+    document.getElementById('gradeDateInput').value=today;
+    renderAll();
+  })();
+</script>
+</body>
+</html>

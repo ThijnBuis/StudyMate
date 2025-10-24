@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tips – StudyMate</title>
+<style>
+:root{--brand:#2193b0;--accent:#6dd5ed;--border:#e4ecf5;--muted:#66788b;--ink:#0f2942;--bg:#f7fbff}
+*{box-sizing:border-box}body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{width:min(900px,92vw);margin:18px auto}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.back{color:var(--brand);text-decoration:none;font-weight:800}
+.card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 28px rgba(33,147,176,.09)}
+h1,h2,h3{margin:0 0 10px}.muted{color:var(--muted)}
+.tip{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;margin:10px 0;display:flex;gap:10px}
+.dot{width:10px;height:10px;border-radius:999px;background:linear-gradient(135deg,var(--brand),var(--accent))}
+.btn{padding:8px 12px;border-radius:10px;border:1px solid #cfe0ee;background:#fff;cursor:pointer;font-weight:800}
+.btn-primary{background:linear-gradient(135deg,var(--brand),var(--accent));border:none;color:#fff;box-shadow:0 8px 22px rgba(33,147,176,.18)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a id="back" class="back" href="#">← Terug naar vak</a>
+    <span class="muted">Geselecteerd vak: <strong id="vakName">–</strong></span>
+  </div>
+
+  <div class="card">
+    <h2>Tips</h2>
+    <p class="muted" style="margin-top:4px">Korte, praktische hints voor dit vak.</p>
+    <button id="addDemo" class="btn btn-primary">+ Demo-tip</button>
+    <div id="tips"></div>
+  </div>
+</div>
+
+<script>
+const KEY='studymate.drive';
+const Q=Object.fromEntries(new URLSearchParams(location.search).entries());
+const folder = decodeURIComponent(Q.folder||'').trim() || (JSON.parse(localStorage.getItem(KEY)||'{}').selected || '');
+document.getElementById('back').href='./vak.html?folder='+encodeURIComponent(folder);
+document.getElementById('vakName').textContent=folder||'—';
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return {}}}
+function save(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}
+function ensure(){
+  const db=load(); db.folders=db.folders||{};
+  db.folders[folder]=db.folders[folder]||{createdAt:new Date().toISOString(),materials:{deadlines:[]}};
+  db.folders[folder].materials.deadlines=db.folders[folder].materials.deadlines||[];
+  if(db.folders[folder].materials.deadlines.filter(x=>x.type==='tip').length===0){
+    db.folders[folder].materials.deadlines.push(
+      {type:'tip', text:'Maak elke paragraaf een mini-samenvatting (3 zinnen).'},
+      {type:'tip', text:'Plan 2 korte oefenblokken i.p.v. één lang blok.'}
+    ); db.folders[folder].lastUpdate=new Date().toISOString(); save(db);
+  }
+}
+function render(){
+  const db=load(); const arr=(db?.folders?.[folder]?.materials?.deadlines||[]).filter(x=>x.type==='tip');
+  const box=document.getElementById('tips'); box.innerHTML='';
+  arr.forEach(t=>{
+    const el=document.createElement('div'); el.className='tip';
+    el.innerHTML=`<div class="dot"></div><div>${t.text}</div>`;
+    box.appendChild(el);
+  });
+}
+document.getElementById('addDemo').onclick=()=>{ const db=load(); db.folders[folder].materials.deadlines.push({type:'tip', text:'Leer actief: leg het uit aan iemand anders.'}); db.folders[folder].lastUpdate=new Date().toISOString(); save(db); render();}
+ensure(); render();
+</script>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Rooster – StudyMate</title>
+<style>
+:root{
+  --brand:#2193b0;--accent:#6dd5ed;--border:#e4ecf5;--muted:#66788b;--ink:#0f2942;--bg:#f7fbff;
+  --danger:#e85162
+}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{width:min(1100px,92vw);margin:20px auto}
+.top{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.back{color:var(--brand);text-decoration:none;font-weight:800}
+h1{margin:0 0 8px}
+.muted{color:var(--muted)}
+.card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:0 10px 28px rgba(33,147,176,.09);margin-top:12px}
+.btn{padding:12px 16px;border-radius:12px;border:1px solid #cfe0ee;background:#fff;font-weight:800;cursor:pointer}
+.btn-primary{background:linear-gradient(135deg,var(--brand),var(--accent));border:none;color:#fff;box-shadow:0 10px 26px rgba(33,147,176,.18)}
+.btn-ghost{background:#fff;border:1px solid #dbe8f3}
+.btn-danger{background:#fff;border:1px solid #f3d1d6;color:#b62235}
+.table{width:100%;border-collapse:separate;border-spacing:0 10px;margin-top:10px}
+.table th{color:var(--muted);text-align:left;font-weight:800;padding:0 12px}
+.table td{background:#fff;border:1px solid var(--border);padding:12px;border-radius:12px;vertical-align:middle}
+.table td.actions{width:120px;text-wrap:nowrap}
+.empty{padding:10px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);text-align:center}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kpi{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}
+.kpi .pill{padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:800}
+.badge{padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,#2193b0,#6dd5ed);color:#fff;font-weight:800;font-size:.85rem}
+textarea.textbox{width:100%;min-height:140px;border:1px dashed var(--border);border-radius:12px;padding:10px;background:#fcfeff}
+.preview-list{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
+.preview-item{display:grid;grid-template-columns:140px 90px 1fr 40px;gap:10px;padding:8px;border:1px solid #eef3f8;border-radius:10px;align-items:center}
+.preview-item+.preview-item{margin-top:8px}
+.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 2px}
+.days-badge{font-weight:900;padding:4px 10px;border-radius:999px;display:inline-block}
+.days-soon{background:linear-gradient(135deg,#ffd66b,#ff9f43);color:#452200}
+.days-late{background:linear-gradient(135deg,#e0e7ef,#cbd6e2);color:#415266}
+.days-over{background:linear-gradient(135deg,#ffd9de,#ffb3be);color:#7a1221}
+.days-today{background:linear-gradient(135deg,#b4f1c8,#6fe7a2);color:#093d27}
+.drop{border:2px dashed #cfe0ee;border-radius:16px;padding:16px;text-align:center;color:var(--muted)}
+.drop.drag{background:#f3fbff}
+.form-grid{display:grid;grid-template-columns:160px 120px 1fr 140px;gap:8px}
+@media(max-width:900px){.preview-item{grid-template-columns:1fr}}
+.icon-btn{padding:8px 10px;border-radius:10px;border:1px solid #e4ecf5;background:#fff;cursor:pointer;font-weight:800}
+.icon-btn:hover{background:#f6fbff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a id="back" class="back" href="#">← Terug naar vak</a>
+    <span class="muted">Geselecteerd vak: <strong id="vakName">–</strong></span>
+  </div>
+
+  <h1>Rooster</h1>
+  <p class="muted">Kies je <strong>PDF met planning</strong>. Lukt PDF niet? Sleep het bestand hieronder of <strong>plak de tekst</strong> uit je planning.</p>
+
+  <div class="card controls">
+    <label for="pdf" class="btn btn-primary">📄 PDF kiezen</label>
+    <input id="pdf" type="file" accept="application/pdf" style="display:none"/>
+    <button id="sort" class="btn">Sorteer op datum</button>
+    <button id="genPlan" class="btn btn-ghost">🧠 Genereer leerplan</button>
+    <button id="clearAll" class="btn btn-danger">🗑️ Rooster leegmaken</button>
+  </div>
+
+  <!-- Drag & Drop + Plak tekst -->
+  <div class="card">
+    <div id="drop" class="drop">Sleep hier je PDF naartoe of klik hierboven op “PDF kiezen”.</div>
+    <div style="margin-top:10px">
+      <details>
+        <summary><strong>Of: Plak planningstekst</strong> (bv. “01-10-2025 09:00 Werkcollege…”, elke regel)</summary>
+        <textarea id="pasteInput" class="textbox" placeholder="Plak hier je planningstekst en klik op ‘Voorvertonen’…"></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button id="previewText" class="btn">Voorvertonen</button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Preview import -->
+  <div id="importBox" class="card" style="display:none">
+    <div class="kpi">
+      <span class="pill">Gevonden: <span id="found">0</span></span>
+      <span class="pill">Klaar om op te slaan: <span id="ready">0</span></span>
+      <span class="pill" id="hintExam" style="display:none"><span class="badge">Tip</span> Ik zag ook toetsen/deadlines (kan leerplan maken)</span>
+    </div>
+    <div class="preview-list" id="preview"></div>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <button id="saveAll" class="btn btn-primary">Opslaan in rooster</button>
+      <button id="clearPrev" class="btn">Leeg maken</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="legend">
+      <span class="days-badge days-today" title="Vandaag">vandaag</span>
+      <span class="days-badge days-soon" title="Binnen 3 dagen">over 1–3 dagen</span>
+      <span class="days-badge days-late" title="Meer dan 3 dagen">over 4+ dagen</span>
+      <span class="days-badge days-over" title="Ligt in het verleden">x dagen geleden</span>
+      <span class="muted">Legenda – zo lees je de kolom “Over (dagen)”.</span>
+    </div>
+    <h2 style="margin:4px 0 6px">Jouw rooster</h2>
+    <table class="table">
+      <thead><tr><th>Datum</th><th>Tijd</th><th>Over (dagen)</th><th>Omschrijving</th><th class="actions">Acties</th></tr></thead>
+      <tbody id="rooster"></tbody>
+    </table>
+    <div id="roosterEmpty" class="empty" style="display:none">Nog geen items.</div>
+  </div>
+
+  <!-- handmatig toevoegen -->
+  <div class="card">
+    <h3 style="margin:0 0 8px">Los item toevoegen</h3>
+    <div class="form-grid" style="margin-top:6px">
+      <input id="addDate" type="date"/>
+      <input id="addTime" type="time"/>
+      <input id="addTitle" type="text" placeholder="Omschrijving (bijv. Tentamen H1-H2)"/>
+      <button id="addBtn" class="btn btn-primary">Toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+/* ===== Basis & opslag ===== */
+const KEY='studymate.drive';
+const Q=Object.fromEntries(new URLSearchParams(location.search).entries());
+const folder = decodeURIComponent(Q.folder||'').trim() || (JSON.parse(localStorage.getItem(KEY)||'{}').selected || '');
+document.getElementById('back').href='./vak.html?folder='+encodeURIComponent(folder||'');
+document.getElementById('vakName').textContent = folder || '—';
+if(!folder){ alert('Open dit scherm via een vak (Portaal → open een vak), zodat ik weet waar ik moet opslaan.'); }
+
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'{}') }catch(e){ return {} } }
+function save(v){ try{ localStorage.setItem(KEY, JSON.stringify(v)) }catch(e){} }
+function ensureStruct(){
+  const db=load(); db.folders=db.folders||{};
+  db.folders[folder]=db.folders[folder]||{createdAt:new Date().toISOString(),materials:{},meta:{}};
+  const M=db.folders[folder].materials; M.schedule=M.schedule||[]; M.studyPlan=M.studyPlan||[];
+  save(db);
+}
+function uuid(){ return 'xxxxxx-xxxx-4xxx-yxxx-xxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16)}) }
+function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString('nl-NL') }catch(e){ return iso } }
+function daysDiffText(iso){
+  const d = new Date(iso); const today = new Date();
+  const a = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dd = Math.round((b - a)/86400000);
+  if(dd===0) return {txt:'vandaag', cls:'days-today'};
+  if(dd<0)   return {txt:`${Math.abs(dd)} dagen geleden`, cls:'days-over'};
+  if(dd===1) return {txt:`over 1 dag`, cls:'days-soon'};
+  if(dd<=3)  return {txt:`over ${dd} dagen`, cls:'days-soon'};
+  return {txt:`over ${dd} dagen`, cls:'days-late'};
+}
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]) );}
+function toast(msg){
+  const n = document.createElement('div');
+  n.textContent = msg;
+  n.style.cssText = `position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:linear-gradient(135deg,#2193b0,#6dd5ed);color:#fff;padding:10px 14px;border-radius:12px;
+    font-weight:800;box-shadow:0 10px 24px rgba(33,147,176,.25);z-index:9999`;
+  document.body.appendChild(n); setTimeout(()=> n.remove(), 1800);
+}
+
+/* ===== Rooster render ===== */
+function renderRooster(){
+  ensureStruct();
+  const db=load(); const M=db.folders[folder].materials;
+  const R = M.schedule || [];
+  const tb=document.getElementById('rooster'); tb.innerHTML='';
+  document.getElementById('roosterEmpty').style.display = R.length?'none':'block';
+  R.sort((a,b)=> new Date(a.date)-new Date(b.date) || (a.time||'').localeCompare(b.time||'') );
+  R.forEach(it=>{
+    const dd = daysDiffText(it.date);
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDate(it.date)}</td>
+      <td>${it.time||'—'}</td>
+      <td><span class="days-badge ${dd.cls}" title="${new Date(it.date).toLocaleDateString('nl-NL')}">${dd.txt}</span></td>
+      <td>${escapeHtml(it.title||'')}</td>
+      <td class="actions">
+        <button class="icon-btn" data-del="${it.id||''}">🗑️ Verwijderen</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  // bind deletes
+  tb.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id=btn.dataset.del; if(!id) return;
+      const db=load(); const arr=db.folders[folder].materials.schedule;
+      const idx = arr.findIndex(x=>x.id===id);
+      if(idx>-1){ arr.splice(idx,1); save(db); renderRooster(); toast('Item verwijderd'); }
+    });
+  });
+}
+
+/* ===== PDF → tekst (stream) ===== */
+async function readPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    out += ' ' + tc.items.map(i=>i.str).join(' '); // stream
+  }
+  return out;
+}
+
+/* ===== Parser (brede formaten) ===== */
+const MONTHS = {
+  jan:1, januari:1, feb:2, februari:2, mar:3, mrt:3, maart:3, apr:4, april:4,
+  may:5, mei:5, jun:6, juni:6, jul:7, juli:7, aug:8, augustus:8,
+  sep:9, sept:9, september:9, oct:10, okt:10, october:10, oktober:10,
+  nov:11, november:11, dec:12, december:12
+};
+const EXAM_WORDS = [
+  'tentamen','toets','examen','herkansing','proefwerk','so','pta','pws','mondeling',
+  'inleveren','inlevermoment','inleverdatum','deadline','inleverdeadline','inleveropdracht',
+  'opdracht','opdrachtdeadline','projectdeadline','portfolio','verslag','paper','scriptie',
+  'presentatie','spreekbeurt','assessment','evaluatie','eindopdracht','praktijktoets','praktijktest',
+  'exam','midterm','final','quiz','test','assessment','due','hand-in','submit','submission',
+  'presentation','deliverable','report','paper','project'
+];
+function makeWordRegex(words){
+  return new RegExp('\\b(' + words.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')\\b','i');
+}
+const EXAM_RE = makeWordRegex(EXAM_WORDS);
+
+function normalizeYear(y){ return String(y).length===2 ? 2000 + parseInt(y,10) : parseInt(y,10); }
+function toISO_dmy(dstr, sep){
+  const parts = dstr.split(sep);
+  const d = parseInt(parts[0],10), m = parseInt(parts[1],10);
+  const y = parts[2] ? normalizeYear(parts[2]) : (new Date().getFullYear());
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function parseEventsFromText(text){
+  const t = (text || '').replace(/\s+/g, ' ').trim();
+  const dm = String.raw`\d{1,2}-\d{1,2}(?:-\d{2,4})?`;
+  const ds = String.raw`\d{1,2}\/\d{1,2}(?:\/\d{2,4})?`;
+  const mo = String.raw`\d{1,2}\s+[A-Za-z\.é]+(?:\s+\d{2,4})?`;
+  const tm = String.raw`\d{1,2}[:.]\d{2}`;
+  const dateAlt = `(?:${dm}|${ds}|${mo})`;
+  const re = new RegExp(`(${dateAlt})\\s+(${tm})\\s+(.+?)(?=(?:\\b${dateAlt}\\s+${tm}\\b)|$)`, 'gi');
+
+  const events = [];
+  let m;
+  while((m = re.exec(t)) !== null){
+    const dstr = m[1];
+    const tstr = m[2].replace('.',':');
+    const title = m[3].trim().replace(/\s{2,}/g,' ');
+    let iso = '';
+    if (/\d{1,2}-\d{1,2}/.test(dstr)) iso = toISO_dmy(dstr, '-');
+    else if (/\d{1,2}\/\d{1,2}/.test(dstr)) iso = toISO_dmy(dstr, '/');
+    else {
+      const mm = dstr.match(/\b(\d{1,2})\s+([A-Za-z\.é]+)(?:\s+(\d{2,4}))?/i);
+      if (mm){
+        const d = parseInt(mm[1],10);
+        const mon = (mm[2]||'').toLowerCase().replace(/\./g,'');
+        const y = mm[3] ? normalizeYear(mm[3]) : (new Date().getFullYear());
+        const month = MONTHS[mon];
+        if (month) iso = `${y}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      }
+    }
+    if (!iso) continue;
+    const isExam = EXAM_RE.test(title);
+    events.push({date: iso, time: tstr, title, isExam});
+  }
+
+  // losse fallback: dd-mmHH:MM zonder spatie
+  if(events.length===0){
+    const loose = new RegExp(`(${dm})\\s*(${tm})\\s+(.+?)(?=(?:\\b${dm}\\s*${tm}\\b)|$)`,'gi');
+    let mm;
+    while((mm = loose.exec(t))!==null){
+      const iso = toISO_dmy(mm[1],'-');
+      events.push({date: iso, time:mm[2].replace('.',':'), title:mm[3].trim(), isExam: EXAM_RE.test(mm[3])});
+    }
+  }
+  return events;
+}
+
+/* ===== Preview state ===== */
+let parsedEvents = [];
+
+/* ===== UI helpers ===== */
+function fillPreview(){
+  const box = document.getElementById('importBox');
+  const list = document.getElementById('preview');
+  const found = document.getElementById('found');
+  const ready = document.getElementById('ready');
+  const hint = document.getElementById('hintExam');
+
+  list.innerHTML='';
+  if(!parsedEvents.length){
+    box.style.display='none';
+    return;
+  }
+  box.style.display='block';
+  found.textContent = parsedEvents.length;
+  ready.textContent = parsedEvents.length;
+  hint.style.display = parsedEvents.some(e=>e.isExam) ? 'inline-flex' : 'none';
+
+  parsedEvents.forEach((ev,i)=>{
+    const row = document.createElement('div');
+    row.className='preview-item';
+    row.innerHTML = `
+      <input type="date" value="${ev.date.slice(0,10)}" data-i="${i}" data-k="date"/>
+      <input type="time" value="${ev.time}" data-i="${i}" data-k="time"/>
+      <input type="text" value="${escapeHtml(ev.title)}" data-i="${i}" data-k="title"/>
+      <button class="icon-btn" title="Verwijder dit item" data-remove="${i}">🗑️</button>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const i=+inp.dataset.i, k=inp.dataset.k;
+      parsedEvents[i][k] = inp.value;
+    });
+  });
+  list.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i=+btn.dataset.remove;
+      parsedEvents.splice(i,1);
+      fillPreview();
+    });
+  });
+}
+
+/* ===== Events: PDF, drag&drop, plaktekst ===== */
+const pdfInput = document.getElementById('pdf');
+pdfInput.addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  try{
+    const text = await readPdfText(file);
+    parsedEvents = parseEventsFromText(text);
+    fillPreview();
+    if(!parsedEvents.length){
+      alert('Ik vond geen regels met datum/tijd. Tip: open de PDF, kopieer de tekst en plak die in “Plak planningstekst”.');
+    }
+  }catch(err){
+    console.error(err);
+    alert('Deze PDF kon ik niet lezen. Tip: probeer slepen/loslaten of plak de tekst.');
+  }finally{
+    e.target.value=''; // reset zodat je dezelfde PDF nog eens kunt kiezen
+  }
+});
+
+// Drag & drop
+const drop = document.getElementById('drop');
+['dragenter','dragover'].forEach(ev=> drop.addEventListener(ev, (e)=>{e.preventDefault();e.stopPropagation();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=> drop.addEventListener(ev, (e)=>{e.preventDefault();e.stopPropagation();drop.classList.remove('drag')}));
+drop.addEventListener('drop', async (e)=>{
+  const file = e.dataTransfer.files?.[0]; if(!file) return;
+  if(file.type!=='application/pdf'){ alert('Sleep een PDF-bestand.'); return; }
+  try{
+    const text = await readPdfText(file);
+    parsedEvents = parseEventsFromText(text);
+    fillPreview();
+    if(!parsedEvents.length){
+      alert('Ik vond geen regels met datum/tijd. Tip: open de PDF, kopieer de tekst en plak die in “Plak planningstekst”.');
+    }
+  }catch(err){
+    console.error(err);
+    alert('Deze PDF kon ik niet lezen. Tip: gebruik “Plak planningstekst”.');
+  }
+});
+
+// Plaktekst
+document.getElementById('previewText').addEventListener('click', ()=>{
+  const raw = document.getElementById('pasteInput').value || '';
+  if(!raw.trim()){ alert('Plak eerst wat tekst.'); return; }
+  parsedEvents = parseEventsFromText(raw);
+  fillPreview();
+  if(!parsedEvents.length){
+    alert('Kon geen datum/tijd vinden in de geplakte tekst. Voorbeeld:\n01-10-2025 09:00 Werkcollege Marketing');
+  }
+});
+
+/* ===== Opslaan / sort / leerplan / clear ===== */
+document.getElementById('saveAll').addEventListener('click', ()=>{
+  if(!parsedEvents.length){ toast('Geen items om op te slaan'); return; }
+  ensureStruct();
+  const db=load(); const M=db.folders[folder].materials;
+  const before = M.schedule.length;
+
+  // milde duplicate-check: zelfde datum + (zelfde tijd of zelfde titel)
+  parsedEvents.forEach(ev=>{
+    const d=ev.date, t=ev.time||'', title=(ev.title||'').trim();
+    if(!d || !title) return;
+    const dup = M.schedule.some(r=>{
+      const sameDate = r.date===d;
+      const sameTime = (r.time||'')===t;
+      const sameTitle = (r.title||'').trim().toLowerCase() === title.toLowerCase();
+      return sameDate && (sameTime || sameTitle);
+    });
+    if(!dup){
+      M.schedule.push({id:uuid(), type:'event', date:new Date(d).toISOString(), time:t, title});
+    }
+  });
+
+  const saved = M.schedule.length - before;
+  save(db);
+  renderRooster();
+  toast(`Planning opgeslagen (${saved} nieuw)`);
+  // preview leegmaken
+  parsedEvents = [];
+  fillPreview();
+});
+
+document.getElementById('clearPrev').addEventListener('click', ()=>{
+  parsedEvents = [];
+  fillPreview();
+});
+
+document.getElementById('sort').addEventListener('click', ()=>{
+  ensureStruct();
+  const db=load(); const M=db.folders[folder].materials;
+  M.schedule.sort((a,b)=> new Date(a.date)-new Date(b.date) || (a.time||'').localeCompare(b.time||'') );
+  save(db); renderRooster();
+});
+
+document.getElementById('genPlan').addEventListener('click', ()=>{
+  ensureStruct();
+  const db=load(); const M=db.folders[folder].materials;
+  let created=0;
+  (M.schedule||[]).forEach(ev=>{
+    // leerplan van alleen toetsen/deadlines
+    if((ev.title||'').match(EXAM_RE)){
+      const before = (M.studyPlan||[]).length;
+      M.studyPlan = M.studyPlan || [];
+      addPlanBlocks(M.studyPlan, ev.date, ev.title);
+      created += (M.studyPlan.length - before);
+    }
+  });
+  save(db);
+  toast(created ? `Leerplan gegenereerd (${created} momenten)` : 'Geen toetsen/deadlines gevonden om een leerplan van te maken');
+});
+
+document.getElementById('clearAll').addEventListener('click', ()=>{
+  if(!confirm('Weet je zeker dat je ALLES uit het rooster wilt verwijderen?')) return;
+  ensureStruct();
+  const db=load(); db.folders[folder].materials.schedule = [];
+  save(db); renderRooster(); toast('Rooster geleegd');
+});
+
+/* ===== Leerplan-blokken (7/3/1) ===== */
+function addPlanBlocks(plan, isoDate, title){
+  const base = new Date(isoDate);
+  const mk = (offsetDays, label, tm='16:00')=>{
+    const d=new Date(base); d.setDate(d.getDate()-offsetDays);
+    const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+    const txt = `${label}: ${title}`;
+    if(!plan.some(p=>p.date===dt && p.title===txt)) plan.push({date:dt, time:tm, title:txt});
+  };
+  mk(7,'Start met leren'); mk(3,'Herhalen'); mk(1,'Laatste check');
+}
+
+/* ===== Init ===== */
+(function init(){
+  ensureStruct();
+  // slimme defaults voor handmatig toevoegen
+  const now=new Date();
+  document.getElementById('addDate').value = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1).toISOString().slice(0,10);
+  document.getElementById('addTime').value = '09:00';
+  document.getElementById('addBtn').addEventListener('click', ()=>{
+    const date=document.getElementById('addDate').value;
+    const time=document.getElementById('addTime').value;
+    const title=(document.getElementById('addTitle').value||'').trim();
+    if(!date || !title){ toast('Vul minimaal datum en titel in'); return; }
+    const db=load(); const M=db.folders[folder].materials;
+    M.schedule = M.schedule || [];
+    M.schedule.push({id:uuid(), type:'event', date:new Date(date).toISOString(), time:time||'', title});
+    save(db); renderRooster(); toast('Item toegevoegd');
+    document.getElementById('addTitle').value='';
+  });
+  renderRooster();
+})();
+</script>
+</body>
+</html>

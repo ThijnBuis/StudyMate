@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Flashcards – StudyMate</title>
+<style>
+:root{--brand:#2193b0;--accent:#6dd5ed;--border:#e4ecf5;--muted:#66788b;--ink:#0f2942;--bg:#f7fbff}
+*{box-sizing:border-box}body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{width:min(900px,92vw);margin:22px auto}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.back{color:var(--brand);text-decoration:none;font-weight:800}
+.card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 28px rgba(33,147,176,.09)}
+h1,h2,h3{margin:0 0 10px}.muted{color:var(--muted)}
+.deck{margin-top:12px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.fc{width:100%;height:260px;border-radius:18px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.4rem;background:#fff;box-shadow:0 12px 30px rgba(33,147,176,.12);cursor:pointer;perspective:1000px;position:relative}
+.fc-inner{position:absolute;inset:0;border-radius:18px;display:flex;align-items:center;justify-content:center;transition:transform .5s;transform-style:preserve-3d}
+.fc.flip .fc-inner{transform:rotateY(180deg)}
+.side{position:absolute;inset:0;border-radius:18px;display:flex;align-items:center;justify-content:center;padding:18px;backface-visibility:hidden}
+.backside{transform:rotateY(180deg);background:linear-gradient(135deg,#ecfeff,#ffffff)}
+.controls{display:flex;gap:10px}
+.btn{padding:10px 14px;border-radius:12px;border:1px solid #cfe0ee;background:#fff;cursor:pointer;font-weight:800}
+.btn-primary{background:linear-gradient(135deg,var(--brand),var(--accent));border:none;color:#fff;box-shadow:0 10px 26px rgba(33,147,176,.22)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a id="back" class="back" href="#">← Terug naar vak</a>
+    <span class="muted">Geselecteerd vak: <strong id="vakName">–</strong></span>
+  </div>
+
+  <div class="card">
+    <h2>Flashcards</h2>
+    <p class="muted" style="margin-top:4px">Klik op de kaart om te draaien. Oefen je begrippen snel.</p>
+
+    <div class="deck">
+      <div id="card" class="fc">
+        <div class="fc-inner">
+          <div class="side" id="front"></div>
+          <div class="side backside" id="backside"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="prev" class="btn">← Vorige</button>
+        <button id="flip" class="btn btn-primary">Draaien</button>
+        <button id="next" class="btn">Volgende →</button>
+      </div>
+      <div class="muted" id="progress">1/1</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY='studymate.drive';
+const Q=Object.fromEntries(new URLSearchParams(location.search).entries());
+const folder = decodeURIComponent(Q.folder||'').trim() || (JSON.parse(localStorage.getItem(KEY)||'{}').selected || '');
+document.getElementById('back').href='./vak.html?folder='+encodeURIComponent(folder);
+document.getElementById('vakName').textContent=folder||'—';
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return {}}}
+function save(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}
+function ensure(){
+  const db=load(); db.folders=db.folders||{};
+  db.folders[folder]=db.folders[folder]||{createdAt:new Date().toISOString(),materials:{module:[]}};
+  db.folders[folder].materials.module=db.folders[folder].materials.module||[];
+  if(db.folders[folder].materials.module.length===0){
+    db.folders[folder].materials.module.push(
+      {type:'flashcard', front:'Vraag: wat is ROI?', back:'Return on Investment (rendement op investering).'},
+      {type:'flashcard', front:'Definitie: Hypothese', back:'Toetsbare veronderstelling die je onderzoekt.'},
+      {type:'flashcard', front:'Formule: Gemiddelde', back:'(Som van waarden) / (aantal waarden).'}
+    ); db.folders[folder].lastUpdate=new Date().toISOString(); save(db);
+  }
+}
+let idx=0, cards=[];
+function paint(){
+  const db=load(); cards=(db?.folders?.[folder]?.materials?.module||[]).filter(x=>x.type==='flashcard');
+  const f=document.getElementById('front'), b=document.getElementById('backside');
+  if(!cards.length){ f.textContent='(geen kaarten)'; b.textContent='—'; return; }
+  f.textContent=cards[idx].front||''; b.textContent=cards[idx].back||'';
+  document.getElementById('progress').textContent=`${idx+1}/${cards.length}`;
+  document.getElementById('card').classList.remove('flip');
+}
+document.getElementById('flip').onclick=()=>document.getElementById('card').classList.toggle('flip');
+document.getElementById('card').onclick=()=>document.getElementById('card').classList.toggle('flip');
+document.getElementById('next').onclick=()=>{ if(!cards.length)return; idx=(idx+1)%cards.length; paint(); }
+document.getElementById('prev').onclick=()=>{ if(!cards.length)return; idx=(idx-1+cards.length)%cards.length; paint(); }
+ensure(); paint();
+</script>
+</body>
+</html>
