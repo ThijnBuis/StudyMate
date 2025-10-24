@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Vak – StudyMate</title>
+  <style>
+    :root{
+      --brand:#2193b0; --accent:#6dd5ed;
+      --border:#e4ecf5; --muted:#6b7b8c; --ink:#0f2942; --bg:#f7fbff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--ink);
+      background:var(--bg);
+    }
+    .bar{
+      position:sticky;top:0;
+      background:linear-gradient(90deg,var(--brand),var(--accent));
+      color:#fff;
+      padding:12px 16px;
+      display:flex;gap:10px;align-items:center;z-index:10;
+      box-shadow:0 2px 8px rgba(0,0,0,.08);
+    }
+    .bar a{color:#fff;text-decoration:none;font-weight:600}
+    .btn{
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      border:1px solid #fff;
+      background:transparent;
+      color:#fff;
+      font-weight:600;
+    }
+    .page{width:min(1000px,94vw);margin:24px auto}
+    h2{margin:0 0 12px}
+    .welcome{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:20px;
+      margin-bottom:20px;
+      box-shadow:0 4px 12px rgba(33,147,176,.08);
+    }
+    .welcome h2{margin:0 0 6px;color:var(--brand)}
+    .welcome p{margin:0;color:var(--muted)}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:16px;
+    }
+    .tile{
+      position:relative;
+      border-radius:16px;
+      padding:28px 16px;
+      background:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      font-weight:700;
+      font-size:1.1rem;
+      cursor:pointer;
+      transition:.2s all ease;
+      border:1px solid var(--border);
+      box-shadow:0 4px 10px rgba(33,147,176,.06);
+    }
+    .tile span.icon{font-size:2rem;margin-bottom:8px}
+    .tile:hover{
+      transform:translateY(-3px);
+      box-shadow:0 6px 18px rgba(33,147,176,.15);
+      background:linear-gradient(135deg,var(--brand),var(--accent));
+      color:#fff;
+    }
+    .tile:hover .badge{background:#fff;color:var(--brand)}
+    .badge{
+      position:absolute;top:10px;right:10px;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:.8rem;
+      background:linear-gradient(135deg,var(--brand),var(--accent));
+      color:#fff;
+      font-weight:600;
+      box-shadow:0 2px 6px rgba(0,0,0,.15);
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a href="./Portaal.html">← Terug naar Portaal</a>
+    <div style="margin-left:auto">Vak: <strong id="folderName">–</strong></div>
+  </div>
+
+  <div class="page">
+    <div class="welcome">
+      <h2 id="welcomeTitle">Welkom in je vakomgeving</h2>
+      <p>Hier vind je al je samenvattingen, oefentoetsen, flashcards en meer, alles netjes bij elkaar.</p>
+    </div>
+
+    <div class="grid" id="menuGrid">
+      <div class="tile" data-key="samenvattingen" data-url="./summaries.html">
+        <span class="icon">📝</span>Samenvattingen
+        <span class="badge" data-badge="samenvattingen">0</span>
+      </div>
+      <div class="tile" data-key="oefentoetsen" data-url="./exams.html">
+        <span class="icon">🧪</span>Oefentoetsen
+        <span class="badge" data-badge="oefentoetsen">0</span>
+      </div>
+      <div class="tile" data-key="flashcards" data-url="./flashcards.html">
+        <span class="icon">🃏</span>Flashcards
+        <span class="badge" data-badge="flashcards">0</span>
+      </div>
+      <div class="tile" data-key="tips" data-url="./tips.html">
+        <span class="icon">💡</span>Tips
+        <span class="badge" data-badge="tips">0</span>
+      </div>
+      <div class="tile" data-key="rooster" data-url="./schedule.html">
+        <span class="icon">🗓️</span>Rooster
+        <span class="badge" data-badge="rooster">0</span>
+      </div>
+      <div class="tile" data-key="vragen" data-url="./questions.html">
+        <span class="icon">💬</span>Vragen
+        <span class="badge" data-badge="vragen">0</span>
+      </div>
+      <div class="tile" id="editEnv" style="grid-column:1/-1">
+        <span class="icon">✏️</span>Omgeving bewerken
+      </div>
+    </div>
+  </div>
+
+<script>
+  const KEY='studymate.drive';
+  const load=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+
+  function currentFolder(){
+    const p=new URLSearchParams(location.search);
+    const d=load(KEY)||{folders:{},selected:null};
+    return p.get('folder') || d.selected || null;
+  }
+  function normalizeMaterials(m){
+    if(Array.isArray(m)) return m.slice();
+    if(!m || typeof m!=='object') return [];
+    const tmp=[]; ['module','assignment','lectures','deadlines','schedule'].forEach(k=>{ if(Array.isArray(m[k])) tmp.push(...m[k]); });
+    return tmp;
+  }
+  function computeCounts(items){
+    const counts = { samenvattingen:0, oefentoetsen:0, flashcards:0, tips:0, rooster:0, vragen:0 };
+    items.forEach(it=>{
+      const t=(it.type||'').toLowerCase();
+      const s=((it.title||'')+' '+(it.url||'')).toLowerCase();
+      if(t==='samenvatting' || /samenvat|summary/.test(s)) counts.samenvattingen++;
+      else if(t==='oefentoets' || /(oefen|proef|practice|test)/.test(s)) counts.oefentoetsen++;
+      if(t==='flashcard' || /(flashcard|kaart)/.test(s)) counts.flashcards++;
+      if(t==='tip' || /tip|advies/.test(s)) counts.tips++;
+      if(t==='rooster' || /rooster|schedule/.test(s)) counts.rooster++;
+      if(t==='vraag' || /vraag|question/.test(s)) counts.vragen++;
+    });
+    return counts;
+  }
+  function paintBadges(){
+    const d=load(KEY)||{folders:{},selected:null};
+    const f=currentFolder();
+    document.getElementById('folderName').textContent=f||'–';
+    document.getElementById('welcomeTitle').textContent = f ? `Welkom bij ${f}` : 'Welkom in je vakomgeving';
+    if(!f || !d.folders[f]) return;
+    const items = normalizeMaterials(d.folders[f].materials||[]);
+    const counts = computeCounts(items);
+    Object.keys(counts).forEach(key=>{
+      const el=document.querySelector(`[data-badge="${key}"]`);
+      if(el) el.textContent=counts[key];
+    });
+  }
+  document.getElementById('menuGrid').addEventListener('click', (e)=>{
+    const tile=e.target.closest('.tile'); if(!tile) return;
+    const url=tile.dataset.url; const f=currentFolder();
+    if(tile.id==='editEnv'){ if(!f) return alert('Geen vak geselecteerd.');
+      location.href='./kennisbank.html?folder='+encodeURIComponent(f); return;
+    }
+    if(url){ location.href=url+(f?('?folder='+encodeURIComponent(f)):''); }
+  });
+  (function init(){
+    const f=currentFolder(); if(!f){ location.href='./Portaal.html'; return; }
+    const d=load(KEY)||{folders:{},selected:null}; d.selected=f; save(KEY,d);
+    paintBadges();
+    window.addEventListener('storage', (e)=>{ if(e.key===KEY) paintBadges(); });
+  })();
+</script>
+</body>
+</html>

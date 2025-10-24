@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Samenvattingen – StudyMate</title>
+<style>
+:root{--brand:#2193b0;--accent:#6dd5ed;--border:#e4ecf5;--muted:#66788b;--ink:#0f2942;--bg:#f7fbff}
+*{box-sizing:border-box}body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{width:min(1200px,92vw);margin:18px auto}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.back{color:var(--brand);text-decoration:none;font-weight:800}
+.card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 28px rgba(33,147,176,.09)}
+h1,h2,h3{margin:0 0 10px}.muted{color:var(--muted)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.btn{padding:8px 12px;border-radius:10px;border:1px solid #cfe0ee;background:#fff;cursor:pointer;font-weight:800}
+.btn-primary{background:linear-gradient(135deg,var(--brand),var(--accent));border:none;color:#fff;box-shadow:0 8px 22px rgba(33,147,176,.18)}
+.list{display:grid;gap:10px}
+.item{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.item .meta{min-width:0}
+.item h4{margin:0;font-size:1rem}.item p{margin:4px 0 0;color:var(--muted)}
+.badge{padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;font-weight:800;font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a id="back" class="back" href="#">← Terug naar vak</a>
+    <span class="muted">Geselecteerd vak: <strong id="vakName">–</strong></span>
+  </div>
+
+  <div class="card">
+    <h2>Samenvattingen</h2>
+    <p class="muted" style="margin-top:4px">Beheer, upload of link je samenvattingen per vak.</p>
+
+    <div class="toolbar">
+      <button id="addDemo" class="btn btn-primary">+ Demo-samenvatting</button>
+      <button id="sortAZ" class="btn">Sorteer A-Z</button>
+    </div>
+
+    <div id="list" class="list"></div>
+  </div>
+</div>
+
+<script>
+const KEY='studymate.drive';
+const Q=Object.fromEntries(new URLSearchParams(location.search).entries());
+const folder = decodeURIComponent(Q.folder||'').trim() || (JSON.parse(localStorage.getItem(KEY)||'{}').selected || '');
+const wrapUrl = './vak.html?folder='+encodeURIComponent(folder||'');
+document.getElementById('back').href = wrapUrl;
+document.getElementById('vakName').textContent = folder||'—';
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return {}}}
+function save(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}
+function ensure(){
+  const db=load(); db.folders=db.folders||{};
+  db.folders[folder]=db.folders[folder]||{createdAt:new Date().toISOString(),materials:{lectures:[]}};
+  db.folders[folder].materials=db.folders[folder].materials||{};
+  db.folders[folder].materials.lectures=db.folders[folder].materials.lectures||[];
+  if(db.folders[folder].materials.lectures.length===0){
+    db.folders[folder].materials.lectures.push(
+      {type:'summary', title:'Hoofdstuk 1 – Kernpunten', note:'Kort overzicht van begrippen.', url:'#', addedAt:new Date().toISOString()},
+      {type:'summary', title:'Formules & definities', note:'Compacte cheatsheet (PDF).', url:'#', addedAt:new Date().toISOString()}
+    );
+    db.folders[folder].lastUpdate=new Date().toISOString();
+    save(db);
+  }
+}
+function render(){
+  const db=load(); const arr=db?.folders?.[folder]?.materials?.lectures||[];
+  const list=document.getElementById('list'); list.innerHTML='';
+  arr.forEach((it,i)=>{
+    const el=document.createElement('div'); el.className='item';
+    el.innerHTML=`<div class="meta">
+        <h4>${it.title||'Naamloos'}</h4>
+        <p>${it.note||''}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="badge">PDF</span>
+        <a class="btn" href="${it.url||'#'}" target="_blank">Open</a>
+      </div>`;
+    list.appendChild(el);
+  });
+}
+document.getElementById('addDemo').onclick=()=>{ const db=load(); db.folders[folder].materials.lectures.push({type:'summary', title:'Nieuwe samenvatting', note:'Demo-item', url:'#', addedAt:new Date().toISOString()}); db.folders[folder].lastUpdate=new Date().toISOString(); save(db); render(); }
+document.getElementById('sortAZ').onclick=()=>{ const db=load(); db.folders[folder].materials.lectures.sort((a,b)=> (a.title||'').localeCompare(b.title||'')); save(db); render(); }
+
+ensure(); render();
+</script>
+</body>
+</html>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Portaal – StudyMate</title>
+  <style>
+    :root{
+      --brand:#2193b0; --accent:#6dd5ed;
+      --border:#e4ecf5; --muted:#66788b; --ink:#0f2942; --bg:#f7fbff;
+      --ok:#2e7d32; --warn:#c97a00;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+
+    /* ===== App layout ===== */
+    .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    aside{
+      background:linear-gradient(180deg,var(--brand),var(--accent));
+      color:#fff;padding:22px 18px;display:flex;flex-direction:column
+    }
+    /* Brand explosiever */
+    .brand{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+    .logo{width:44px;height:44px;border-radius:12px;background:#fff;color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:900}
+    .brand-title{
+      font-weight:900; font-size:1.4rem;
+      background:linear-gradient(90deg,#fff,rgba(255,255,255,.8));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      letter-spacing:.3px; filter: drop-shadow(0 2px 10px rgba(0,0,0,.12));
+    }
+    nav{display:flex;flex-direction:column;gap:8px;flex:1;margin-top:6px}
+    nav button{all:unset;display:block;padding:12px 14px;border-radius:12px;cursor:pointer;font-weight:700}
+    nav button:hover{background:rgba(255,255,255,.15)}
+    nav button.active{background:rgba(255,255,255,.28)}
+    #logout{margin-top:auto;background:rgba(255,255,255,.12);border:none;border-radius:12px;padding:12px 14px;cursor:pointer}
+
+    main{padding:22px}
+    .card{
+      background:#fff;border:1px solid var(--border);border-radius:20px;padding:20px;
+      box-shadow:0 10px 30px rgba(33,147,176,.09)
+    }
+    .muted{color:var(--muted)}
+    .btn{padding:10px 14px;border:1px solid #cfe0ee;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
+    .btn-primary{
+      background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;border:none;
+      box-shadow:0 10px 28px rgba(33,147,176,.22)
+    }
+    .btn-ghost{background:#fff;border:1px solid #dbe8f3}
+    h1,h2,h3,h4{margin:0 0 10px}
+
+    /* ===== Dashboard ===== */
+    .dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .stat{border:1px solid var(--border);border-radius:14px;padding:14px;background:#fff}
+    .kpis{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .tip-block .tip-text{
+      font-weight:900; font-size:1.2rem;
+      background:linear-gradient(90deg,var(--brand),var(--accent),var(--brand));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      background-size:200% 100%; animation:slideGradient 12s ease-in-out infinite;
+    }
+    @keyframes slideGradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    .table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    .table th{color:var(--muted);text-align:left;font-weight:800;padding:0 12px}
+    .table td{background:#fff;border:1px solid var(--border);padding:12px;border-radius:12px}
+    .table tr td:first-child{font-weight:900}
+    .score-badge{padding:4px 10px;border-radius:999px;font-weight:800;font-size:.9rem;color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444)}
+    .score-ok{background:linear-gradient(135deg,#34d399,#10b981)}
+    .score-warn{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+
+    /* ===== Vakken ===== */
+    #tab-vakken .header-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+    .vak{
+      position:relative; background:#fff; border:1px solid var(--border); border-radius:18px;
+      padding:16px; display:flex; gap:16px; align-items:center;
+      box-shadow:0 6px 18px rgba(33,147,176,.08);
+      transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .vak:hover{ transform:translateY(-2px); box-shadow:0 12px 26px rgba(33,147,176,.15); border-color:#d5e8f5; }
+    .vak .avatar{
+      width:56px; height:56px; border-radius:16px; flex:0 0 56px;
+      display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; letter-spacing:.3px;
+      background:linear-gradient(135deg,var(--brand),var(--accent));
+      box-shadow:0 10px 24px rgba(33,147,176,.25);
+    }
+    .vak .meta{flex:1 1 auto; min-width:0}
+    .vak .title{font-weight:900; font-size:1.1rem; margin-bottom:4px; color:var(--ink)}
+    .vak .sub{color:var(--muted); font-size:.95rem}
+    .vak .actions{display:flex; gap:8px; flex-wrap:wrap}
+    .empty-state{
+      background:linear-gradient(180deg,#ffffff,#f3faff); border:1px dashed #d9e7f3; color:var(--muted);
+      padding:18px; border-radius:16px; text-align:center;
+    }
+    /* Nieuw-hier hint */
+    .hint {background: linear-gradient(180deg,#ffffff,#f3faff); border: 1px solid var(--border); border-radius: 16px;
+           padding: 16px; margin: 12px 0 16px; box-shadow: 0 6px 18px rgba(33,147,176,.08);}
+    .hint h3 { margin: 0 0 6px; color: var(--brand); }
+    .hint ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+    .hint .cta { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .hint .btn-big { padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg,var(--brand),var(--accent));
+                     color:#fff; border: none; cursor: pointer; font-weight: 800; box-shadow: 0 8px 24px rgba(33,147,176,.18); }
+    .hint .btn-ghost { padding: 10px 14px; border-radius: 12px; border: 1px solid #dbe8f3; background:#fff; color: var(--ink); font-weight: 700; cursor: pointer; }
+
+    /* ===== Profiel (zelfde card-stijl, groter & vrolijk) ===== */
+    .profile-grid{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-top:12px}
+    @media(max-width:980px){ .profile-grid{grid-template-columns:1fr} }
+    .p-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 8px 22px rgba(33,147,176,.09)}
+    .p-title{margin:0 0 10px}
+    .profile-card{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+    .avatar{
+      width:180px;height:180px;border-radius:20px;border:1px solid var(--border);
+      display:flex;align-items:center;justify-content:center;font-weight:900;font-size:2.6rem;color:#fff;
+      background:linear-gradient(135deg,var(--brand),var(--accent));box-shadow:0 12px 30px rgba(33,147,176,.18);overflow:hidden
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:none}
+    .badges{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:#fff;font-weight:800}
+    .info-list{width:100%;text-align:left;border-top:1px dashed var(--border);padding-top:12px}
+    .info-row{display:flex;justify-content:space-between;gap:8px;margin:8px 0}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:680px){ .form-grid{grid-template-columns:1fr} }
+    label.p-label{font-weight:800;margin-bottom:6px;display:block}
+    input.p-input, textarea.p-input, select.p-input{
+      width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fcfeff
+    }
+    input.p-input:focus, textarea.p-input:focus, select.p-input:focus{
+      border-color:#b8d7ea;box-shadow:0 0 0 3px rgba(33,147,176,.12);outline:0
+    }
+    .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .toast{display:none;margin-left:8px;color:var(--ok);font-weight:900}
+    .help{font-size:.95rem;color:var(--muted)}
+    @media(max-width:900px){.app{grid-template-columns:1fr}aside{position:sticky;top:0;z-index:5}.dash-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="logo">SM</div>
+      <div class="brand-title">StudyMate</div>
+    </div>
+    <nav>
+      <button class="active" data-tab="dashboard">📊 Dashboard</button>
+      <button data-tab="vakken">📚 Vakken</button>
+      <button data-tab="profiel">👤 Profiel</button>
+      <button id="logout" type="button">⇦ Uitloggen</button>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="tab-dashboard" class="card">
+      <div class="kpis">
+        <h2 style="font-size:1.6rem">Welkom terug</h2>
+        <div class="muted" style="font-size:1rem">Vandaag: <span id="today"></span></div>
+      </div>
+
+      <div class="stats" style="margin-bottom:14px">
+        <div class="stat"><div class="muted">Vakken</div><div style="font-weight:900;font-size:1.5rem" id="statVakken">0</div></div>
+        <div class="stat"><div class="muted">Materialen</div><div style="font-weight:900;font-size:1.5rem" id="statFiles">0</div></div>
+        <div class="stat"><div class="muted">Laatst bijgewerkt</div><div style="font-weight:900;font-size:1.5rem" id="statUpdated">–</div></div>
+      </div>
+
+      <div class="dash-grid">
+
+        <!-- ===== MUZIEK / SPOTIFY ===== -->
+<div class="card" id="musicCard">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <h3 style="margin:0 0 6px">Muziek (Spotify)</h3>
+      <div class="muted">Kies focusmuziek of koppel je eigen Spotify.</div>
+    </div>
+    <div class="row" style="display:flex;gap:8px;align-items:center">
+      <button id="spLoginBtn" class="btn">Log in met Spotify</button>
+      <button id="spLogoutBtn" class="btn" style="display:none">Afmelden</button>
+    </div>
+  </div>
+
+  <hr class="sep" style="margin:12px 0">
+
+  <!-- Zoeken (werkt na login) -->
+  <div id="spSearchRow" class="row" style="display:none;gap:8px;align-items:center">
+    <input id="spQuery" class="input" placeholder="Zoek naar tracks, playlists, artiesten…" style="min-width:280px">
+    <select id="spType" class="input">
+      <option value="track">Tracks</option>
+      <option value="playlist">Playlists</option>
+      <option value="album">Albums</option>
+      <option value="artist">Artiesten</option>
+    </select>
+    <button id="spSearchBtn" class="btn">Zoeken</button>
+    <span id="spStatus" class="muted"></span>
+  </div>
+
+  <!-- Resultaten -->
+  <div id="spResults" style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px"></div>
+
+  <hr class="sep" style="margin:12px 0">
+
+  <!-- Quick embed zonder login -->
+  <div class="row" style="display:flex;gap:8px;align-items:center">
+    <input id="spLink" class="input" placeholder="Plak hier een Spotify link (track/playlist/album)" style="flex:1; min-width:360px">
+    <button id="spEmbedBtn" class="btn">Embedden</button>
+  </div>
+
+  <div id="spPlayer" style="margin-top:12px"></div>
+</div>
+
+        <!-- Linkerkolom -->
+        <div style="display:grid; gap:16px">
+          <div class="card tip-block">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <h3 style="font-size:1.2rem">Tip van de dag</h3>
+              <button id="nextTip" class="btn">Volgende tip</button>
+            </div>
+            <p id="tipText" class="tip-text" style="margin:10px 0 0">—</p>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size:1.2rem">Focus vandaag</h3>
+            <p class="muted" style="margin-top:6px">Vakken die nu het meest aandacht nodig hebben.</p>
+            <table class="table" id="focusTable">
+              <thead><tr>
+                <th>Vak</th><th>Items</th><th>Laatst</th><th>Score</th><th></th>
+              </tr></thead>
+              <tbody id="focusBody"><tr><td class="muted" colspan="5">Geen data</td></tr></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size:1.2rem">Recente activiteit</h3>
+            <div id="recentList" class="muted">Nog niets toegevoegd.</div>
+          </div>
+        </div>
+
+        <!-- Rechterkolom -->
+        <div style="display:grid; gap:16px">
+          <div class="card" style="border:1px dashed var(--border)">
+            <h3>Snelkoppelingen</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn btn-primary" id="quickNewVak">+ Nieuw vak</button>
+              <a class="btn" id="quickOpenKennisbank" href="#">Kennisbank openen</a>
+            </div>
+          </div>
+
+          <div class="card" style="border:1px dashed var(--border)">
+            <h3>Korte uitleg</h3>
+            <ul class="muted" style="margin:8px 0 0; padding-left:20px">
+              <li>Maak een vak aan en voeg materiaal toe via <em>Omgeving bewerken</em>.</li>
+              <li>Open een vak en werk vanuit jouw omgeving (samenvattingen, toetsen, etc.).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VAKKEN -->
+    <section id="tab-vakken" class="card" style="display:none;margin-top:16px">
+      <div class="header-row">
+        <h2 style="font-size:1.4rem">Jouw vakken</h2>
+        <button class="btn btn-primary" id="addVak">+ Nieuw vak</button>
+      </div>
+
+      <div class="hint" id="vakkenHint">
+        <h3>Nieuw hier?</h3>
+        <ul>
+          <li>Maak je eerste <strong>vak</strong> aan met één klik.</li>
+          <li>Voeg materiaal toe in <em>Omgeving bewerken</em> (kennisbank).</li>
+          <li>Open het vak en werk vanuit je eigen omgeving.</li>
+        </ul>
+        <div class="cta">
+          <button class="btn-big" id="hintNewVak">+ Nieuw vak</button>
+          <button class="btn-ghost" id="hintHow">Hoe werkt het?</button>
+        </div>
+      </div>
+
+      <div id="selectedVakBar" style="margin:8px 0 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="muted">Geselecteerd vak: <strong id="selectedVakName">–</strong></span>
+        <button id="switchVak" class="btn" type="button">Wissel vak…</button>
+      </div>
+      <div style="margin:6px 0 12px" class="muted">Totaal: <strong id="vakCount">0</strong></div>
+      <div id="vakGrid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px"></div>
+    </section>
+
+    <!-- PROFIEL -->
+    <section id="tab-profiel" class="card" style="display:none;margin-top:16px">
+      <h2 style="font-size:1.4rem">Mijn profiel</h2>
+
+      <div class="profile-grid">
+        <!-- Linker kolom: profielkaart -->
+        <div class="p-card profile-card">
+          <div class="avatar" id="profAvatar">
+            <img id="profPreview" alt="Profielfoto"/>
+            <span id="profInitials">SM</span>
+          </div>
+          <div class="badges">
+            <span class="badge" id="badgeNaam">–</span>
+            <span class="badge" id="badgeKlas">–</span>
+          </div>
+          <div style="width:100%">
+            <input id="profFoto" type="file" accept="image/*" class="p-input" />
+            <div class="help" style="margin-top:6px">Kies een afbeelding (vierkant werkt het mooist).</div>
+          </div>
+
+          <div class="info-list">
+            <div class="info-row"><span class="muted">E-mail</span><strong id="infoEmail">–</strong></div>
+            <div class="info-row"><span class="muted">Telefoon</span><strong id="infoTel">–</strong></div>
+            <div class="info-row"><span class="muted">Doel</span><strong id="infoDoel">—</strong></div>
+          </div>
+        </div>
+
+        <!-- Rechter kolom: formulieren -->
+        <div style="display:grid;gap:16px">
+          <div class="p-card">
+            <h3 class="p-title">Persoonlijke gegevens</h3>
+            <div class="form-grid">
+              <div>
+                <label class="p-label">Volledige naam</label>
+                <input id="profNaam" type="text" class="p-input" placeholder="bijv. Thijn Buis"/>
+              </div>
+              <div>
+                <label class="p-label">E-mail</label>
+                <input id="profEmail" type="email" class="p-input" placeholder="jij@school.nl"/>
+              </div>
+              <div>
+                <label class="p-label">Telefoon</label>
+                <input id="profTel" type="tel" class="p-input" placeholder="06-…"/>
+              </div>
+              <div>
+                <label class="p-label">Klas / Groep</label>
+                <input id="profKlas" type="text" class="p-input" placeholder="bijv. 5V, HBO-ICT, MBO-4"/>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="profOpslaan">Profiel opslaan</button>
+              <button class="btn" id="profReset">Reset</button>
+              <span class="toast" id="profSaved">Opgeslagen ✓</span>
+            </div>
+          </div>
+
+          <div class="p-card">
+            <h3 class="p-title">Studiedoelen</h3>
+            <div class="form-grid">
+              <div style="grid-column:1/-1">
+                <label class="p-label">Jouw doel (kort)</label>
+                <input id="profDoel" type="text" class="p-input" placeholder="bijv. Gemiddeld 7,5 voor wiskunde"/>
+              </div>
+              <div>
+                <label class="p-label">Volgende toets / mijlpaal</label>
+                <input id="profMijlpaal" type="date" class="p-input"/>
+              </div>
+              <div>
+                <label class="p-label">Focus-vak</label>
+                <input id="profFocus" type="text" class="p-input" placeholder="bijv. Engels"/>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="doelOpslaan">Doel opslaan</button>
+              <span class="toast" id="doelSaved">Opgeslagen ✓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // ===== Keys & helpers =====
+  const KEY_DRIVE='studymate.drive', KEY_PROF='studymate.profiles';
+  const load=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+  const todayStr=new Date().toLocaleDateString('nl-NL');
+
+  // Tabs
+  document.querySelectorAll('nav button[data-tab]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('nav button[data-tab]').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const t=b.getAttribute('data-tab');
+      document.querySelectorAll('main section').forEach(s=>s.style.display='none');
+      document.getElementById('tab-'+t).style.display='block';
+    });
+  });
+
+  // ========== DASHBOARD ==========
+  document.getElementById('today').textContent=todayStr;
+
+  function renderStats(){
+    const d=load(KEY_DRIVE)||{folders:{},selected:null}; const names=Object.keys(d.folders||{});
+    const v=names.length;
+    const f=names.reduce((acc,n)=>{const m=d.folders[n]?.materials||{};let c=0;
+      if(Array.isArray(m))c=m.length;else c=['module','assignment','lectures','deadlines','schedule'].reduce((x,y)=>x+(m[y]?.length||0),0);
+      return acc+c;},0);
+    const upd=names.map(n=>d.folders[n]?.lastUpdate||d.folders[n]?.createdAt||null).filter(Boolean).sort().pop();
+    document.getElementById('statVakken').textContent=v;
+    document.getElementById('statFiles').textContent=f;
+    document.getElementById('statUpdated').textContent=upd?new Date(upd).toLocaleDateString('nl-NL'):'–';
+  }
+
+  const tips=[
+    "Werk in blokken van 25 minuten (Pomodoro) en neem 5 minuten pauze.",
+    "Maak na elk hoofdstuk 3 eigen oefenvragen en beantwoord ze morgen opnieuw.",
+    "Gebruik je eigen woorden voor een samenvatting van maximaal 8 zinnen.",
+    "Herhaal slim: vandaag, morgen, over 3 dagen en over 1 week.",
+    "Begin met een mini-doel: 10 minuten opstarten → motivatie volgt vanzelf.",
+    "Leer actief: leg het uit aan een klasgenoot (of aan jezelf hardop).",
+    "Gebruik flashcards voor definities en formules.",
+    "Plan je week: 3 focusmomenten per vak is vaak genoeg."
+  ];
+  function setRandomTip(){ document.getElementById('tipText').textContent=tips[Math.floor(Math.random()*tips.length)]; }
+  document.getElementById('nextTip').addEventListener('click', setRandomTip);
+
+  function analyzeVakken(){
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    const res=[];
+    Object.keys(d.folders||{}).forEach(name=>{
+      const node=d.folders[name]; const mats=node?.materials||{};
+      const items = Array.isArray(mats)?mats.length:['module','assignment','lectures','deadlines','schedule'].reduce((x,y)=>x+(mats[y]?.length||0),0);
+      const last = node?.lastUpdate || node?.createdAt || null;
+      const days = last ? Math.floor((Date.now()-new Date(last).getTime())/86400000) : 999;
+      const scarcity = items===0? 40 : Math.max(0, 20 - Math.min(items,20));
+      const score = days + scarcity;
+      res.push({name, items, last, days, score});
+    });
+    res.sort((a,b)=> b.score - a.score);
+    return res;
+  }
+  function paintFocus(){
+    const tbody=document.getElementById('focusBody'); tbody.innerHTML='';
+    const data=analyzeVakken().slice(0,5);
+    if(!data.length){ tbody.innerHTML='<tr><td class="muted" colspan="5">Nog geen vakken. Maak er één aan om te starten.</td></tr>'; return; }
+    data.forEach(row=>{
+      const tr=document.createElement('tr');
+      const last = row.last ? new Date(row.last).toLocaleDateString('nl-NL') : '–';
+      let badge='score-warn'; if(row.score>=80) badge=''; else if(row.score<=20) badge='score-ok';
+      const badgeHtml = `<span class="score-badge ${badge}">${row.score}</span>`;
+      tr.innerHTML = `
+        <td>${row.name}</td>
+        <td>${row.items}</td>
+        <td>${last}</td>
+        <td>${badgeHtml}</td>
+        <td><button class="btn btn-ghost" data-open="${row.name}">Open</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('[data-open]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const name=btn.getAttribute('data-open'); const d=load(KEY_DRIVE)||{folders:{},selected:null};
+        d.selected=name; save(KEY_DRIVE,d); location.href='./vak.html?folder='+encodeURIComponent(name);
+      });
+    });
+  }
+
+  function flattenMaterials(node){
+    const m=node?.materials||[];
+    if(Array.isArray(m)) return m.slice();
+    const out=[]; ['module','assignment','lectures','deadlines','schedule'].forEach(k=>{ if(Array.isArray(m[k])) out.push(...m[k]); });
+    return out;
+  }
+  function paintRecent(){
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    const list=document.getElementById('recentList'); list.innerHTML='';
+    const items=[];
+    Object.entries(d.folders||{}).forEach(([name,node])=>{
+      const mats=flattenMaterials(node).map(it=>({vak:name, ...it}));
+      items.push(...mats);
+    });
+    if(!items.length){ list.textContent='Nog niets toegevoegd.'; return; }
+    items.sort((a,b)=> new Date(b.addedAt||b.date||0) - new Date(a.addedAt||a.date||0));
+    const top=items.slice(0,5);
+    top.forEach(it=>{
+      const wrap=document.createElement('div');
+      wrap.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff';
+      const title=it.title||it.url||'(naamloos)';
+      const left = it.url ? `<a href="${it.url}" target="_blank" rel="noopener">${title}</a>` : `<span>${title}</span>`;
+      const type = `<span class="muted" style="font-size:1rem">${it.type||'link'} · <strong>${it.vak}</strong></span>`;
+      wrap.innerHTML=`<div>${left}</div><div>${type}</div>`;
+      list.appendChild(wrap);
+    });
+  }
+
+  // ========== VAKKEN ==========
+  function hueFromString(str){ let h=0; for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; } return h % 360; }
+
+  function renderVakken(){
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    const g=document.getElementById('vakGrid'); const names=Object.keys(d.folders||{});
+    const cnt=document.getElementById('vakCount'); const hint=document.getElementById('vakkenHint');
+    g.innerHTML=''; if(hint) hint.style.display = names.length ? 'none' : 'block';
+
+    if(!names.length){
+      g.innerHTML='<div class="empty-state">Nog geen vakken. Klik op <strong>+ Nieuw vak</strong> om te starten.</div>';
+      if(cnt)cnt.textContent='0'; return;
+    }
+    names.sort((a,b)=>a.localeCompare(b,'nl',{sensitivity:'base'}));
+
+    names.forEach(n=>{
+      const card=document.createElement('div'); card.className='vak';
+      const avatar=document.createElement('div'); avatar.className='avatar';
+      const hue=hueFromString(n);
+      avatar.style.background=`linear-gradient(135deg,hsl(${hue} 70% 45%), hsl(${(hue+30)%360} 85% 60%))`;
+      avatar.textContent=(n.trim()[0]||'V').toUpperCase();
+
+      const meta=document.createElement('div'); meta.className='meta';
+      const title=document.createElement('div'); title.className='title'; title.textContent=n;
+      const m=d.folders[n]?.materials||{};
+      const tot=Array.isArray(m)?m.length:['module','assignment','lectures','deadlines','schedule'].reduce((x,y)=>x+(m[y]?.length||0),0);
+      const sub=document.createElement('div'); sub.className='sub'; sub.textContent=`${tot} ${tot===1?'item':'items'}`;
+      meta.append(title,sub);
+
+      const actions=document.createElement('div'); actions.className='actions';
+      const open=document.createElement('button'); open.className='btn btn-primary'; open.textContent='Openen';
+      open.addEventListener('click',()=>{ d.selected=n; save(KEY_DRIVE,d); location.href='./vak.html?folder='+encodeURIComponent(n); });
+      const del=document.createElement('button'); del.className='btn btn-ghost'; del.textContent='Verwijderen';
+      del.addEventListener('click',()=>{ if(!confirm(`Vak “${n}” verwijderen?`))return; delete d.folders[n];
+        if(d.selected===n){ const rest=Object.keys(d.folders||{}); d.selected=rest[0]||null; }
+        save(KEY_DRIVE,d); renderVakken(); renderStats(); paintSelectedVak(); paintFocus();
+      });
+      actions.append(open,del);
+
+      card.append(avatar,meta,actions);
+      g.appendChild(card);
+    });
+    if(cnt) cnt.textContent=String(names.length);
+  }
+
+  function paintSelectedVak(){ const e=document.getElementById('selectedVakName'); if(!e)return; const d=load(KEY_DRIVE)||{folders:{},selected:null}; e.textContent=d.selected||'–'; }
+
+  // Wissel & Nieuw
+  document.getElementById('switchVak').addEventListener('click',()=>{
+    const d=load(KEY_DRIVE)||{folders:{},selected:null}; const names=Object.keys(d.folders||{});
+    const n=prompt('Kies of maak een vak:', d.selected || (names[0]||'')); if(!n) return;
+    if(!d.folders[n]) d.folders[n]={createdAt:new Date().toISOString(),materials:[],lastUpdate:null};
+    d.selected=n; save(KEY_DRIVE,d); paintSelectedVak(); renderVakken(); renderStats(); paintFocus();
+  });
+
+  document.getElementById('addVak').addEventListener('click',()=>{
+    const n=prompt('Naam van het nieuwe vak:'); if(!n)return;
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    if(!d.folders[n]) d.folders[n]={createdAt:new Date().toISOString(),materials:{module:[],assignment:[],lectures:[],deadlines:[],schedule:[]},lastUpdate:new Date().toISOString()};
+    d.selected=n; save(KEY_DRIVE,d);
+    location.href='./kennisbank.html?folder='+encodeURIComponent(n);
+  });
+
+  // Snelkoppelingen
+  document.getElementById('quickNewVak').addEventListener('click',(e)=>{e.preventDefault(); document.getElementById('addVak').click();});
+  document.getElementById('quickOpenKennisbank').addEventListener('click',(e)=>{
+    e.preventDefault();
+    const d=load(KEY_DRIVE)||{folders:{},selected:null};
+    const sel=d.selected||Object.keys(d.folders||{})[0]; if(!sel){alert('Geen vak geselecteerd. Maak eerst een vak aan.'); return;}
+    location.href='./kennisbank.html?folder='+encodeURIComponent(sel);
+  });
+
+  // Hint-knoppen
+  document.getElementById('hintNewVak')?.addEventListener('click', ()=> document.getElementById('addVak').click());
+  document.getElementById('hintHow')?.addEventListener('click', ()=>{
+    alert(`Zo werkt het:
+1) Klik op “+ Nieuw vak” en geef je vak een naam.
+2) Je komt in de kennisbank om materiaal toe te voegen.
+3) Open het vak: daar vind je Samenvattingen, Oefentoetsen, Flashcards, Tips, Rooster en Vragen.`);
+  });
+
+  // ===== Profiel =====
+  (function(){
+    const KEY_SESSION='studymate.session';
+    const id = s => document.getElementById(s);
+    const sessTxt=localStorage.getItem(KEY_SESSION); const sess=sessTxt?JSON.parse(sessTxt):null;
+    const userKey=(sess&&sess.username)?sess.username:'default';
+    const profiles=load(KEY_PROF)||{}; const data=profiles[userKey]||{name:'',email:'',tel:'',klas:'',photoDataUrl:'',doel:'',mijlpaal:'',focus:''};
+
+    const f = {
+      naam:id('profNaam'), email:id('profEmail'), tel:id('profTel'), klas:id('profKlas'),
+      foto:id('profFoto'), preview:id('profPreview'), initials:id('profInitials'),
+      badgeNaam:id('badgeNaam'), badgeKlas:id('badgeKlas'),
+      infoEmail:id('infoEmail'), infoTel:id('infoTel'), infoDoel:id('infoDoel'),
+      doel:id('profDoel'), mijlpaal:id('profMijlpaal'), focus:id('profFocus')
+    };
+    function initialsFrom(name){ if(!name) return 'SM'; return name.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join(''); }
+    function hueFromString(str){ let h=0; for(let i=0;i<(str||'SM').length;i++){ h=(h*31+str.charCodeAt(i))>>>0 } return h%360; }
+    function paintAvatarBG(name){ const hue = hueFromString(name||'SM'); id('profAvatar').style.background = `linear-gradient(135deg,hsl(${hue} 70% 45%), hsl(${(hue+28)%360} 85% 60%))`; }
+
+    // paint init
+    f.naam.value=data.name||''; f.email.value=data.email||''; f.tel.value=data.tel||''; f.klas.value=data.klas||'';
+    f.doel.value=data.doel||''; f.mijlpaal.value=data.mijlpaal||''; f.focus.value=data.focus||'';
+    f.badgeNaam.textContent=data.name||'Naam onbekend';
+    f.badgeKlas.textContent=data.klas||'Klas/Groep';
+    f.infoEmail.textContent=data.email||'—'; f.infoTel.textContent=data.tel||'—'; f.infoDoel.textContent=data.doel||'—';
+    if(data.photoDataUrl){ f.preview.src=data.photoDataUrl; f.preview.style.display='block'; f.initials.style.display='none'; }
+    else { f.initials.textContent=initialsFrom(data.name); f.preview.style.display='none'; f.initials.style.display='block'; }
+    paintAvatarBG(data.name);
+
+    // foto upload
+    f.foto.addEventListener('change', e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const r=new FileReader(); r.onload=()=>{ f.preview.src=r.result; f.preview.style.display='block'; f.initials.style.display='none'; data.photoDataUrl=r.result; };
+      r.readAsDataURL(file);
+    });
+
+    // opslaan
+    document.getElementById('profOpslaan').addEventListener('click', ()=>{
+      const email = f.email.value.trim();
+      if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ alert('Voer een geldig e-mailadres in.'); return; }
+
+      profiles[userKey] = {
+        name:f.naam.value.trim(), email:f.email.value.trim(), tel:f.tel.value.trim(), klas:f.klas.value.trim(),
+        photoDataUrl:data.photoDataUrl||'', doel:f.doel.value.trim(), mijlpaal:f.mijlpaal.value, focus:f.focus.value.trim()
+      };
+      save(KEY_PROF,profiles);
+
+      f.badgeNaam.textContent = profiles[userKey].name || 'Naam onbekend';
+      f.badgeKlas.textContent = profiles[userKey].klas || 'Klas/Groep';
+      f.infoEmail.textContent = profiles[userKey].email || '—';
+      f.infoTel.textContent   = profiles[userKey].tel   || '—';
+      f.infoDoel.textContent  = profiles[userKey].doel  || '—';
+      document.getElementById('profSaved').style.display='inline';
+      setTimeout(()=>document.getElementById('profSaved').style.display='none',1500);
+      if(!data.photoDataUrl){ f.initials.textContent = initialsFrom(profiles[userKey].name); }
+      paintAvatarBG(profiles[userKey].name);
+    });
+
+    document.getElementById('profReset').addEventListener('click', ()=>{
+      f.naam.value=data.name||''; f.email.value=data.email||''; f.tel.value=data.tel||''; f.klas.value=data.klas||'';
+      f.doel.value=data.doel||''; f.mijlpaal.value=data.mijlpaal||''; f.focus.value=data.focus||'';
+    });
+
+    document.getElementById('doelOpslaan').addEventListener('click', ()=>{
+      const p=load(KEY_PROF)||{}; const d=p[userKey]||{};
+      d.doel=f.doel.value.trim(); d.mijlpaal=f.mijlpaal.value; d.focus=f.focus.value.trim();
+      p[userKey]=d; save(KEY_PROF,p);
+      document.getElementById('doelSaved').style.display='inline';
+      setTimeout(()=>document.getElementById('doelSaved').style.display='none',1500);
+      f.infoDoel.textContent = d.doel || '—';
+    });
+  })();
+
+  // Uitloggen
+  document.getElementById('logout').addEventListener('click',()=>{ localStorage.removeItem('studymate.session'); location.href='./Inlog.html'; });
+
+  // Live refresh
+  window.addEventListener('storage', e=>{ if(e.key===KEY_DRIVE){ renderStats(); renderVakken(); paintSelectedVak(); paintFocus(); paintRecent(); } });
+
+  // Init
+  setRandomTip();
+  renderStats(); renderVakken(); paintSelectedVak(); paintFocus(); paintRecent();
+  
+</script>
+</body>
+</html>

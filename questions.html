@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI Vragen – StudyMate</title>
+<style>
+:root{--brand:#2193b0;--accent:#6dd5ed;--border:#e4ecf5;--muted:#66788b;--ink:#0f2942;--bg:#f7fbff}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{width:min(1100px,92vw);margin:18px auto}
+
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.back{color:var(--brand);text-decoration:none;font-weight:800}
+
+.card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 28px rgba(33,147,176,.09)}
+h1,h2,h3{margin:0 0 10px}
+.muted{color:var(--muted)}
+
+.row{display:grid;grid-template-columns:1fr 320px;gap:14px}
+@media(max-width:900px){.row{grid-template-columns:1fr}}
+
+.sidebar .stat{border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff;margin-bottom:12px}
+.kpi{font-weight:900;font-size:1.3rem}
+
+.chat{display:flex;flex-direction:column;height:60vh;min-height:420px;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.stream{flex:1;overflow:auto;background:linear-gradient(180deg,#ffffff,#f5fbff)}
+.msg{display:flex;gap:10px;padding:12px 16px}
+.msg+.msg{border-top:1px solid #f0f4f9}
+.bubble{max-width:740px;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;box-shadow:0 6px 16px rgba(33,147,176,.08)}
+.me .bubble{background:linear-gradient(180deg,#ffffff,#f6fbff)}
+.ai .bubble{background:#fff}
+.me .tag{background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff}
+.ai .tag{background:#e9f6fb;color:#0b3b52}
+.tag{font-size:.8rem;font-weight:900;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:6px}
+
+.composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);background:#fff}
+input[type="text"]{flex:1;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fcfeff}
+input[type="text"]:focus{border-color:#b8d7ea;box-shadow:0 0 0 3px rgba(33,147,176,.12);outline:0}
+.btn{padding:10px 14px;border-radius:12px;border:1px solid #cfe0ee;background:#fff;cursor:pointer;font-weight:800}
+.btn-primary{background:linear-gradient(135deg,var(--brand),var(--accent));border:none;color:#fff;box-shadow:0 8px 22px rgba(33,147,176,.18)}
+.btn-ghost{background:#fff;border:1px solid #dbe8f3}
+
+.skel{height:16px;border-radius:8px;background:linear-gradient(90deg,#eef6fb,#ffffff,#eef6fb);background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk {0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.result h4{margin:0 0 6px}
+.sources{display:grid;gap:8px;margin-top:10px}
+.src{border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:#fff;display:flex;justify-content:space-between;gap:10px}
+.src .meta{color:var(--muted);font-size:.92rem}
+.badge{padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;font-weight:800;font-size:.8rem}
+.small{font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a id="back" class="back" href="#">← Terug naar vak</a>
+    <span class="muted">Geselecteerd vak: <strong id="vakName">–</strong></span>
+  </div>
+
+  <div class="row">
+    <!-- CHAT -->
+    <div class="card">
+      <h2>AI-hulp bij jouw materiaal</h2>
+      <p class="muted" style="margin-top:4px">Stel een vraag. Ik doorzoek je samenvattingen, toetsen, flashcards, tips en rooster van dit vak en geef een antwoord met bronnen.</p>
+
+      <div class="chat" id="chat">
+        <div class="stream" id="stream"></div>
+        <div class="composer">
+          <input id="q" type="text" placeholder="Bijv. Wat is ROI en hoe bereken ik het?"/>
+          <button id="send" class="btn btn-primary">Vraag</button>
+          <button id="suggest" class="btn btn-ghost">Suggestie</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS / HINTS -->
+    <div class="sidebar">
+      <div class="stat">
+        <div class="muted">Items in dit vak</div>
+        <div class="kpi" id="kpiCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="muted">Laatst bijgewerkt</div>
+        <div class="kpi" id="kpiUpdated">–</div>
+      </div>
+      <div class="stat">
+        <div class="muted">Snelle voorbeelden</div>
+        <div style="display:grid;gap:8px;margin-top:8px">
+          <button class="btn" data-ex="Geef de definitie van ROI.">Definitie</button>
+          <button class="btn" data-ex="Welke tips heb ik bewaard over leren plannen?">Tips</button>
+          <button class="btn" data-ex="Welke oefentoetsen heb ik bij dit vak?">Toetsen</button>
+          <button class="btn" data-ex="Wat staat er in mijn rooster voor morgen?">Rooster</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Basis ---------- */
+const KEY='studymate.drive';
+const Q=Object.fromEntries(new URLSearchParams(location.search).entries());
+const folder = decodeURIComponent(Q.folder||'').trim() || (JSON.parse(localStorage.getItem(KEY)||'{}').selected || '');
+document.getElementById('back').href='./vak.html?folder='+encodeURIComponent(folder||'');
+document.getElementById('vakName').textContent = folder || '—';
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return {}}}
+function save(v){try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}}
+
+/* ---------- Demo-data indien leeg ---------- */
+function ensureDemo(){
+  const db=load(); db.folders=db.folders||{};
+  db.folders[folder]=db.folders[folder]||{createdAt:new Date().toISOString(),materials:{}};
+  const M=db.folders[folder].materials;
+  M.lectures = M.lectures||[];      // samenvattingen
+  M.assignment = M.assignment||[];  // toetsen & vragen
+  M.module = M.module||[];          // flashcards
+  M.deadlines = M.deadlines||[];    // tips
+  M.schedule = M.schedule||[];      // rooster
+
+  let changed=false;
+  if(M.lectures.length===0){
+    M.lectures.push(
+      {type:'summary', title:'Hoofdstuk 1 – Kernpunten', note:'ROI, marge, omzet/winst.', url:'#', addedAt:new Date().toISOString()},
+      {type:'summary', title:'Formules overzicht', note:'ROI = winst / investering × 100%.', url:'#', addedAt:new Date().toISOString()}
+    ); changed=true;
+  }
+  if(M.assignment.filter(x=>x.type==='exam'||x.type==='quiz').length===0){
+    M.assignment.push(
+      {type:'exam', title:'Proeftoets H1-H2', date:new Date().toISOString(), score:78}
+    ); changed=true;
+  }
+  if(M.assignment.filter(x=>x.type==='question').length===0){
+    M.assignment.push(
+      {type:'question', q:'Wat is het verschil tussen omzet en winst?', a:'Omzet = alle inkomsten; winst = inkomsten – kosten.'}
+    ); changed=true;
+  }
+  if(M.module.filter(x=>x.type==='flashcard').length===0){
+    M.module.push({type:'flashcard', front:'Definitie ROI?', back:'Return on Investment = winst / investering.'}); changed=true;
+  }
+  if(M.deadlines.filter(x=>x.type==='tip').length===0){
+    M.deadlines.push({type:'tip', text:'Leer actief: leg het uit aan iemand anders.'}); changed=true;
+  }
+  if(M.schedule.length===0){
+    M.schedule.push({type:'event', date:new Date(Date.now()+86400000).toISOString(), time:'09:00', title:'Werkcollege ROI', location:'B204'}); changed=true;
+  }
+  if(changed){ db.folders[folder].lastUpdate=new Date().toISOString(); save(db); }
+}
+ensureDemo();
+
+/* ---------- Index bouwen ---------- */
+function buildIndex(){
+  const db=load(); const f=db?.folders?.[folder]; if(!f) return {items:[],count:0,updated:null};
+  const M=f.materials||{};
+  const items=[];
+
+  // Samenvattingen
+  (M.lectures||[]).forEach(x=>items.push({type:'Samenvatting', title:x.title, text:(x.note||'')+' '+(x.title||''), url:x.url||'', date:x.addedAt||f.lastUpdate||f.createdAt||'', raw:x}));
+  // Oefentoetsen
+  (M.assignment||[]).filter(x=>x.type==='exam'||x.type==='quiz').forEach(x=>items.push({type:'Oefentoets', title:x.title, text:`score ${x.score||'-'} datum ${x.date||''}`, url:'#', date:x.date||'', raw:x}));
+  // Vragen
+  (M.assignment||[]).filter(x=>x.type==='question').forEach(x=>items.push({type:'Vraag', title:x.q, text:(x.q||'')+' '+(x.a||''), url:'#', date:f.lastUpdate||'', raw:x}));
+  // Flashcards
+  (M.module||[]).filter(x=>x.type==='flashcard').forEach(x=>items.push({type:'Flashcard', title:x.front, text:(x.front||'')+' '+(x.back||''), url:'#', date:f.lastUpdate||'', raw:x}));
+  // Tips
+  (M.deadlines||[]).filter(x=>x.type==='tip').forEach(x=>items.push({type:'Tip', title:x.text, text:x.text, url:'#', date:f.lastUpdate||'', raw:x}));
+  // Rooster
+  (M.schedule||[]).forEach(x=>items.push({type:'Rooster', title:x.title, text:`${x.title||''} ${x.location||''} ${x.time||''}`, url:'#', date:x.date||'', raw:x}));
+
+  return {items, count:items.length, updated:f.lastUpdate||f.createdAt||null};
+}
+const IDX=buildIndex();
+document.getElementById('kpiCount').textContent=IDX.count;
+document.getElementById('kpiUpdated').textContent=IDX.updated?new Date(IDX.updated).toLocaleDateString('nl-NL'):'–';
+
+/* ---------- Chat UI helpers ---------- */
+const stream=document.getElementById('stream');
+function addMsg(role, html){
+  const div=document.createElement('div');
+  div.className='msg '+(role==='user'?'me':'ai');
+  div.innerHTML=`<div class="bubble"><span class="tag">${role==='user'?'Jij':'AI'}</span><div class="${role==='user'?'':'result'}">${html}</div></div>`;
+  stream.appendChild(div);
+  stream.scrollTop = stream.scrollHeight;
+}
+function addTyping(){
+  const d=document.createElement('div'); d.className='msg ai'; d.id='typing';
+  d.innerHTML=`<div class="bubble"><span class="tag">AI</span>
+    <div><div class="skel" style="width:220px;margin:6px 0"></div><div class="skel" style="width:320px"></div></div>
+  </div>`;
+  stream.appendChild(d); stream.scrollTop=stream.scrollHeight;
+}
+function removeTyping(){ document.getElementById('typing')?.remove(); }
+
+/* ---------- “AI” antwoord: keyword-match + samenvatting ---------- */
+function tokenize(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[^\w\s%]/g,' ').split(/\s+/).filter(Boolean); }
+function scoreDoc(qTokens, item){
+  const text = (item.title+' '+item.text).toLowerCase();
+  let score=0; qTokens.forEach(t=>{ const m=text.match(new RegExp(`\\b${t}\\b`,'g')); score += m? m.length*10 : (text.includes(t)?3:0); });
+  // kleine bonus voor recente items
+  const days = item.date ? ((Date.now()-new Date(item.date).getTime())/86400000) : 365;
+  score += Math.max(0, 20 - Math.min(days,20));
+  return score;
+}
+function answer(query){
+  const qTokens = tokenize(query).filter(t=>t.length>1);
+  const matches = IDX.items.map(it=>({it,score:scoreDoc(qTokens,it)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+
+  if(matches.length===0){
+    return {summary:"Ik vond geen directe hits in je materiaal. Probeer het specifieker (bijv. “ROI formule” of “planning morgen”).", sources:[]};
+  }
+
+  // simpele “samenvatting”
+  const top = matches.slice(0,3).map(m=>m.it);
+  let summary = "";
+  if(qTokens.some(t=>t==='roi')){
+    summary = "ROI staat voor *Return on Investment*: **winst / investering × 100%**. In je materiaal vind ik een formule-overzicht en een werkkollege over ROI.";
+  } else if(qTokens.some(t=>t==='planning'||t==='rooster'||t==='morgen')){
+    summary = "Volgens je rooster heb je binnenkort activiteiten. Zie de lijst hieronder voor datum/tijd en locatie.";
+  } else if(qTokens.some(t=>t==='tip'||t==='leren'||t==='studie')){
+    summary = "Enkele opgeslagen leertips voor dit vak: kort en actief herhalen, en uitleggen aan iemand anders.";
+  } else {
+    summary = "Ik heb relevante onderdelen gevonden in je samenvattingen/flashcards/toetsen. Hieronder staan de beste treffers met een korte toelichting.";
+  }
+
+  const sources = matches.map(({it,score})=>{
+    const when = it.date ? new Date(it.date).toLocaleDateString('nl-NL') : '—';
+    const right = it.type==='Rooster'
+      ? `${when} • ${it.raw.time||''} • ${it.raw.location||''}`.trim()
+      : when;
+    return {
+      title: it.title || '(naamloos)',
+      type: it.type,
+      right,
+      url: it.url || '',
+      score
+    };
+  });
+
+  return {summary, sources};
+}
+
+/* ---------- Interaction ---------- */
+function handleAsk(text){
+  if(!text.trim()) return;
+  addMsg('user', escapeHtml(text));
+  addTyping();
+  setTimeout(()=>{
+    const res = answer(text);
+    removeTyping();
+    // bouw HTML
+    const list = res.sources.map(s=>`
+      <div class="src">
+        <div>
+          <div><strong>${escapeHtml(s.title)}</strong> <span class="badge">${s.type}</span></div>
+          <div class="meta small">${escapeHtml(s.right)}</div>
+        </div>
+        ${s.url ? `<a class="btn" href="${s.url}" target="_blank" rel="noopener">Open</a>` : ''}
+      </div>
+    `).join('');
+    addMsg('ai', `<h4 style="margin:0 0 6px">Antwoord</h4>
+      <div class="small" style="margin-bottom:8px">${escapeHtml(res.summary)}</div>
+      <div class="sources">${list || '<div class="muted">Geen bronnen gevonden.</div>'}</div>
+    `);
+  }, 500);
+}
+
+function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+
+document.getElementById('send').addEventListener('click', ()=>{
+  const q=document.getElementById('q'); handleAsk(q.value); q.value=''; q.focus();
+});
+document.getElementById('q').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('send').click(); }
+});
+document.querySelectorAll('[data-ex]').forEach(b=> b.addEventListener('click',()=>{ document.getElementById('q').value=b.dataset.ex; document.getElementById('send').click(); }));
+document.getElementById('suggest').addEventListener('click', ()=>{
+  const ex = ["Vat hoofdstuk 1 samen.","Welke tips heb ik opgeslagen?","Wat staat er morgen in het rooster?","Wat betekent marge in mijn notities?","Welke flashcards heb ik over definities?"];
+  document.getElementById('q').value = ex[Math.floor(Math.random()*ex.length)];
+});
+
+/* Init UI */
+if(!folder){ addMsg('ai','Kies eerst een vak. Ga <a href="./Portaal.html">terug naar het portaal</a> en open een vak.'); }
+else{ addMsg('ai','Stel je vraag over <strong>'+escapeHtml(folder)+'</strong>. Ik zoek in je opgeslagen materiaal.'); }
+</script>
+</body>
+</html>

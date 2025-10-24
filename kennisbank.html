@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Kennisbank – StudyMate</title>
+  <style>
+    :root{
+      --brand:#2193b0; --accent:#6dd5ed;
+      --border:#e4ecf5; --muted:#6b7b8c; --ink:#0f2942; --bg:#f7fbff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+
+    /* Topbar in dezelfde stijl als vak.html */
+    .bar{
+      position:sticky;top:0;
+      background:linear-gradient(90deg,var(--brand),var(--accent));
+      color:#fff; padding:12px 16px;
+      display:flex; gap:10px; align-items:center; z-index:10;
+      box-shadow:0 2px 8px rgba(0,0,0,.08);
+    }
+    .bar a{color:#fff;text-decoration:none;font-weight:600}
+    .btn{
+      padding:8px 12px; border-radius:10px; cursor:pointer;
+      border:1px solid #fff; background:transparent; color:#fff; font-weight:600;
+    }
+
+    .page{width:min(1000px,94vw);margin:24px auto}
+    .card{
+      background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px;
+      box-shadow:0 4px 12px rgba(33,147,176,.08); margin-bottom:16px;
+    }
+    h2{margin:0 0 10px}
+    .muted{color:var(--muted)}
+
+    /* Beheer-UI */
+    .formgrid{display:grid;grid-template-columns:2fr 2fr 1fr;gap:10px;align-items:end}
+    label{font-weight:600;display:block;margin-bottom:6px}
+    input[type=text], select{
+      width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff;
+    }
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn-solid{
+      padding:10px 12px; border-radius:12px; cursor:pointer; border:none;
+      background:linear-gradient(135deg,var(--brand),var(--accent)); color:#fff; font-weight:700;
+      box-shadow:0 6px 18px rgba(33,147,176,.18);
+    }
+    .btn-ghost{
+      padding:10px 12px; border-radius:12px; cursor:pointer; border:1px solid #cfe0ee; background:#fff; color:var(--ink); font-weight:600;
+    }
+
+    /* Lijst items */
+    .row{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:12px; border:1px solid var(--border); border-radius:12px; background:#fff; margin-bottom:10px;
+    }
+    .row a{color:#0b6aa9;text-decoration:none}
+    .type{color:var(--muted);font-size:.9rem}
+    .tag{
+      padding:2px 8px; border-radius:999px; background:linear-gradient(135deg,var(--brand),var(--accent)); color:#fff; font-size:.8rem; font-weight:700
+    }
+    .ok{display:none;color:#2e7d32;font-weight:700}
+
+    /* Upload blok */
+    .uploader{
+      display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end;
+      border:1px dashed var(--border); border-radius:14px; padding:12px; background:#fff
+    }
+    input[type=file]{display:block}
+
+    @media (max-width:860px){
+      .formgrid{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width:620px){
+      .formgrid{grid-template-columns:1fr}
+      .uploader{grid-template-columns:1fr}
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Topbar -->
+  <div class="bar">
+    <a href="./vak.html" id="backToVak">← Terug naar vak</a>
+    <div style="margin-left:auto">Vak: <strong id="currentFolder">–</strong></div>
+  </div>
+
+  <div class="page">
+    <!-- Welkom/intro in dezelfde tone-of-voice -->
+    <div class="card">
+      <h2 id="welcomeTitle">Kennisbank</h2>
+      <p class="muted">Beheer hier al het materiaal van je vak. Voeg handmatig items of PDF’s toe, verwijder wat je niet meer nodig hebt, of importeer snel links die op deze pagina staan.</p>
+    </div>
+
+    <!-- Handmatig toevoegen -->
+    <div class="card">
+      <h3>Handmatig item toevoegen</h3>
+      <div class="formgrid">
+        <div>
+          <label for="addTitle">Titel</label>
+          <input id="addTitle" type="text" placeholder="Bijv. Samenvatting H2"/>
+        </div>
+        <div>
+          <label for="addUrl">URL (optioneel)</label>
+          <input id="addUrl" type="text" placeholder="https://… of leeg laten"/>
+        </div>
+        <div>
+          <label for="addType">Type</label>
+          <select id="addType">
+            <option value="link">link</option>
+            <option value="pdf">pdf</option>
+            <option value="doc">doc</option>
+            <option value="ppt">ppt</option>
+            <option value="samenvatting">samenvatting</option>
+            <option value="oefentoets">oefentoets</option>
+            <option value="flashcard">flashcard</option>
+            <option value="tip">tip</option>
+            <option value="rooster">rooster</option>
+            <option value="vraag">vraag</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button id="addItem" class="btn-solid">Item toevoegen</button>
+        <button id="kbScrape" class="btn-ghost">Opslaan (links op pagina)</button>
+        <span id="kbSaved" class="ok">Opgeslagen ✓</span>
+      </div>
+    </div>
+
+    <!-- PDF upload -->
+    <div class="card">
+      <h3>PDF toevoegen</h3>
+      <div class="uploader">
+        <div>
+          <label for="pdfFile">Kies PDF-bestand</label>
+          <input id="pdfFile" type="file" accept="application/pdf"/>
+          <p class="muted" style="margin:6px 0 0">
+            Tip: PDF’s tot ca. <strong>2 MB</strong> worden lokaal opgeslagen. Grotere bestanden kun je beter als <em>link</em> toevoegen (bijv. via Google Drive).
+          </p>
+        </div>
+        <button id="uploadPdfBtn" class="btn-solid">PDF uploaden</button>
+      </div>
+      <span id="pdfOk" class="ok" style="margin-top:8px;display:inline-block">PDF toegevoegd ✓</span>
+    </div>
+
+    <!-- Lijst -->
+    <div class="card">
+      <h3>Materiaal in dit vak</h3>
+      <div id="empty" class="muted" style="display:none">Nog geen materiaal. Voeg hierboven iets toe.</div>
+      <div id="list"></div>
+      <div class="actions" style="margin-top:10px">
+        <button id="clearAll" class="btn-ghost">Alles verwijderen</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const KEY='studymate.drive';
+  const load=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
+  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+
+  function curFolder(){
+    const p=new URLSearchParams(location.search);
+    const d=load(KEY)||{folders:{},selected:null};
+    return p.get('folder') || d.selected;
+  }
+  function ensureFolder(d, folder){
+    if(!d.folders[folder]){
+      d.folders[folder] = { createdAt:new Date().toISOString(), materials:[], lastUpdate:null };
+    }
+  }
+  function matsArray(d, folder){
+    let m=d.folders[folder]?.materials||[];
+    if(!Array.isArray(m)){
+      const tmp=[]; ['module','assignment','lectures','deadlines','schedule'].forEach(k=>{ if(Array.isArray(m?.[k])) tmp.push(...m[k]); });
+      m=tmp;
+    }
+    return m;
+  }
+  function saveMats(d, folder, arr){
+    d.folders[folder].materials = arr;
+    d.folders[folder].lastUpdate = new Date().toISOString();
+    d.selected = folder;
+    save(KEY,d);
+  }
+
+  function renderList(){
+    const d=load(KEY)||{folders:{},selected:null};
+    const folder=curFolder(); const list=document.getElementById('list'); const empty=document.getElementById('empty');
+    list.innerHTML='';
+    if(!folder || !d.folders[folder]){ empty.style.display='block'; return; }
+
+    const arr=matsArray(d, folder);
+    if(arr.length===0){ empty.style.display='block'; return; }
+    empty.style.display='none';
+
+    arr.forEach((it, idx)=>{
+      const row=document.createElement('div'); row.className='row';
+      const title = it.title || it.url || '(naamloos)';
+      const left = it.url ? `<a href="${it.url}" target="_blank" rel="noopener">${title}</a>` : `<span>${title}</span>`;
+      const meta = `
+        <span class="type">${it.type||'link'}</span>
+        ${it.size ? `<span class="tag">${(it.size/1024/1024).toFixed(2)} MB</span>` : ''}
+        <button class="btn-ghost" data-del="${idx}">Verwijderen</button>
+      `;
+      row.innerHTML = `<div>${left}</div><div style="display:flex;align-items:center;gap:10px">${meta}</div>`;
+      list.appendChild(row);
+    });
+
+    // delete handlers
+    list.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i=Number(btn.getAttribute('data-del'));
+        const d2=load(KEY)||{folders:{},selected:null}; const folder2=curFolder();
+        const arr2=matsArray(d2, folder2);
+        if(!confirm(`Item “${(arr2[i]?.title||arr2[i]?.url||'item') }” verwijderen?`)) return;
+        arr2.splice(i,1);
+        ensureFolder(d2, folder2); saveMats(d2, folder2, arr2);
+        renderList();
+      });
+    });
+  }
+
+  // Handmatig toevoegen
+  document.getElementById('addItem').addEventListener('click', ()=>{
+    const title = document.getElementById('addTitle').value.trim();
+    const url   = document.getElementById('addUrl').value.trim();
+    const type  = document.getElementById('addType').value;
+    if(!title && !url){ alert('Geef minimaal een titel of een URL.'); return; }
+
+    const d=load(KEY)||{folders:{},selected:null}; const folder=curFolder();
+    if(!folder){ alert('Geen vak geselecteerd.'); return; }
+    ensureFolder(d, folder);
+    const arr=matsArray(d, folder);
+    arr.push({type, title, url});
+    saveMats(d, folder, arr);
+
+    document.getElementById('addTitle').value=''; document.getElementById('addUrl').value='';
+    renderList();
+  });
+
+  // Alles verwijderen
+  document.getElementById('clearAll').addEventListener('click', ()=>{
+    const d=load(KEY)||{folders:{},selected:null}; const folder=curFolder();
+    if(!folder){ alert('Geen vak geselecteerd.'); return; }
+    ensureFolder(d, folder);
+    if(!confirm('Alle materiaal in dit vak verwijderen?')) return;
+    saveMats(d, folder, []);
+    renderList();
+  });
+
+  // Links/koppen op pagina scrapen (optioneel)
+  document.getElementById('kbScrape').addEventListener('click', ()=>{
+    const d=load(KEY)||{folders:{},selected:null}; const folder=curFolder();
+    if(!folder){ alert('Geen vak geselecteerd.'); return; }
+    ensureFolder(d, folder);
+    let arr=matsArray(d, folder);
+
+    const items=[];
+    document.querySelectorAll('a[href]').forEach(a=>{
+      const href=a.getAttribute('href'); const txt=a.textContent.trim();
+      if(!href) return;
+      if(/\.(pdf|docx?|pptx?|xlsx?)($|\?)/i.test(href) || /download|document|les|college|slide|samenvat/i.test(txt)){
+        items.push({type:'link', title: txt || href, url: href});
+      }
+    });
+    document.querySelectorAll('h1,h2,h3').forEach(h=>{
+      const t=h.textContent.trim(); if(t) items.push({type:'heading', title:t});
+    });
+
+    arr = arr.concat(items);
+    saveMats(d, folder, arr);
+
+    const ok=document.getElementById('kbSaved'); ok.style.display='inline'; setTimeout(()=> ok.style.display='none', 1200);
+    renderList();
+  });
+
+  // PDF upload (<= ~2MB naar localStorage, anders tip)
+  document.getElementById('uploadPdfBtn').addEventListener('click', ()=>{
+    const file = document.getElementById('pdfFile').files[0];
+    if(!file){ alert('Kies eerst een PDF.'); return; }
+    if(file.type!=='application/pdf'){ alert('Alleen PDF ondersteund.'); return; }
+
+    // Lees als DataURL (kan groot zijn; probeer te beperken)
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const dataUrl = reader.result; // data:application/pdf;base64,...
+      const d=load(KEY)||{folders:{},selected:null}; const folder=curFolder();
+      if(!folder){ alert('Geen vak geselecteerd.'); return; }
+      ensureFolder(d, folder);
+      const arr=matsArray(d, folder);
+      arr.push({ type:'pdf', title:file.name.replace(/\.pdf$/i,''), url:dataUrl, size:file.size });
+      saveMats(d, folder, arr);
+      document.getElementById('pdfOk').style.display='inline-block';
+      setTimeout(()=>{document.getElementById('pdfOk').style.display='none'},1200);
+      document.getElementById('pdfFile').value='';
+      renderList();
+    };
+    // 2MB waarschuwing
+    const max = 2 * 1024 * 1024;
+    if(file.size > max){
+      if(!confirm('Deze PDF is groter dan 2 MB. Opslaan kan traag zijn of mislukken in localStorage. Doorgaan? (Aanbevolen: upload elders en voeg als link toe)')) return;
+    }
+    reader.readAsDataURL(file);
+  });
+
+  // Init
+  (function(){
+    let d=load(KEY)||{folders:{},selected:null};
+    const p=new URLSearchParams(location.search); let folder=p.get('folder') || d.selected;
+    if(!folder){
+      const nm=prompt('Voor welk vak wil je materiaal bewerken?'); if(!nm) return;
+      folder=nm; ensureFolder(d, folder); d.selected=folder; save(KEY,d);
+      history.replaceState(null,'',location.pathname+'?folder='+encodeURIComponent(folder));
+    }else{
+      ensureFolder(d, folder); d.selected=folder; save(KEY,d);
+    }
+    document.getElementById('currentFolder').textContent=folder;
+    document.getElementById('welcomeTitle').textContent = `Kennisbank – ${folder}`;
+    document.getElementById('backToVak').href = './vak.html?folder=' + encodeURIComponent(folder);
+    renderList();
+
+    // Als vak-omgeving open is in andere tab, die ziet updates via 'storage'
+    window.addEventListener('storage', e=>{ if(e.key===KEY) renderList(); });
+  })();
+</script>
+</body>
+</html>
